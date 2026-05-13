@@ -212,54 +212,54 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 pb-20 font-sans">
-      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 p-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <Music className="w-5 h-5 text-white" />
+      <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 p-3 md:p-4">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="bg-indigo-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
+              <Music className="w-4 h-4 md:w-5 md:h-5 text-white" />
             </div>
             <div>
-              <h1 className="font-black tracking-tight text-xl">EURO PARTY</h1>
-              <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Live Session: {sessionId}</p>
+              <h1 className="font-black tracking-tight text-lg md:text-xl">EURO PARTY</h1>
+              <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Live Session: {sessionId}</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={copyInviteLink}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-xl text-sm font-bold transition-all border border-white/5"
+              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border border-white/5"
             >
-              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
-              {copied ? 'Link Copied!' : 'Invite Friends'}
+              {copied ? <Check className="w-3 h-3 md:w-4 md:h-4 text-green-400" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4" />}
+              <span className="hidden xs:inline">{copied ? 'Copied!' : 'Invite'}</span>
             </button>
             <button 
               onClick={() => setShowResults(!showResults)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-black transition-all flex items-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
+              className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
             >
-              <Trophy className="w-4 h-4" />
-              {showResults ? 'CLOSE RESULTS' : 'CALCULATE WINNER'}
+              <Trophy className="w-3 h-3 md:w-4 md:h-4" />
+              <span>{showResults ? 'CLOSE' : 'WINNER'}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto p-4 lg:p-8 space-y-12">
+      <main className="max-w-7xl mx-auto p-3 md:p-4 lg:p-8 space-y-8 md:space-y-12">
         
         {/* Results Podium Overlay */}
         {showResults && (
-          <section className="bg-gradient-to-br from-indigo-950/50 via-slate-900/80 to-purple-950/30 border border-indigo-500/30 rounded-[2.5rem] p-8 lg:p-12 text-center animate-in fade-in zoom-in duration-500 shadow-2xl relative overflow-hidden">
+          <section className="bg-gradient-to-br from-indigo-950/50 via-slate-900/80 to-purple-950/30 border border-indigo-500/30 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 text-center animate-in fade-in zoom-in duration-500 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
-            <h2 className="text-4xl font-black mb-12 flex items-center justify-center gap-4">
-              <Crown className="w-10 h-10 text-yellow-400" />
+            <h2 className="text-2xl md:text-4xl font-black mb-8 md:mb-12 flex items-center justify-center gap-3 md:gap-4">
+              <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
               THE FINAL STANDINGS
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
               {results.slice(0, 3).map((res, idx) => (
-                <div key={res.name} className={`relative p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 mt-4 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 mt-4 md:mt-12'}`}>
-                  <div className="text-5xl mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
-                  <div className="text-2xl font-black uppercase tracking-tighter mb-2">{res.name}</div>
-                  <div className="text-4xl font-black text-indigo-400">{res.score} <span className="text-sm font-bold text-slate-500 uppercase">pts</span></div>
-                  {idx === 0 && <Star className="absolute -top-3 -right-3 w-8 h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
+                <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
+                  <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
+                  <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
+                  <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">pts</span></div>
+                  {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
                 </div>
               ))}
             </div>
@@ -289,7 +289,7 @@ export default function App() {
                 {sessionData.countries.map((c: string) => (
                   <div key={c} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl group hover:bg-slate-800/60 transition-colors">
                     <span className="font-semibold">{c}</span>
-                    <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                    <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all p-2">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -322,13 +322,14 @@ export default function App() {
                     </div>
                     {!p.claimedBy && !myParticipantId ? (
                       <button 
+                        disabled={!user}
                         onClick={() => claimSlot(p.id)}
-                        className="text-[10px] bg-indigo-600 hover:bg-indigo-500 px-3 py-1.5 rounded-lg font-black tracking-wider uppercase shadow-md shadow-indigo-500/20"
+                        className={`text-xs font-black tracking-wider uppercase px-4 py-2 rounded-xl shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
                       >
-                        JOIN
+                        {user ? 'JOIN' : '...'}
                       </button>
                     ) : p.claimedBy === user?.uid && (
-                      <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded font-black uppercase">YOU</span>
+                      <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">YOU</span>
                     )}
                   </div>
                 ))}
@@ -384,9 +385,9 @@ export default function App() {
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-950/50">
-                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
-                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Points Assignment</th>
-                        <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Score</th>
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Points Assignment</th>
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Score</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -396,9 +397,9 @@ export default function App() {
 
                         return (
                           <tr key={country} className="border-b border-white/5 hover:bg-indigo-500/5 transition-all group">
-                            <td className="p-6 font-black text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
-                            <td className="p-6">
-                              <div className="flex flex-wrap gap-1.5">
+                            <td className="p-4 md:p-6 font-black text-base md:text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
+                            <td className="p-4 md:p-6">
+                              <div className="flex flex-wrap gap-1.5 md:gap-2">
                                 {POINT_SCALE.map(pt => {
                                   const isUsed = Object.values(myVotes).includes(pt);
                                   const isSelected = currentScore === pt;
@@ -408,7 +409,7 @@ export default function App() {
                                       key={pt}
                                       onClick={() => castVote(country, isSelected ? 0 : pt)}
                                       className={`
-                                        w-10 h-10 rounded-xl text-sm font-black transition-all
+                                        w-11 h-11 md:w-10 md:h-10 rounded-xl text-sm font-black transition-all
                                         ${isSelected ? 'bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
                                           isUsed ? 'bg-slate-800/50 text-slate-700 opacity-30 cursor-not-allowed' : 
                                           'bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 border border-white/5'}
@@ -420,10 +421,10 @@ export default function App() {
                                 })}
                               </div>
                             </td>
-                            <td className="p-6 text-center">
+                            <td className="p-4 md:p-6 text-center">
                               {currentScore > 0 ? (
                                 <div className="inline-flex flex-col items-center">
-                                  <span className="bg-indigo-500/20 text-indigo-400 px-4 py-1.5 rounded-full text-sm font-black shadow-inner">
+                                  <span className="bg-indigo-500/20 text-indigo-400 px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-black shadow-inner">
                                     {currentScore} PTS
                                   </span>
                                 </div>
