@@ -6,6 +6,7 @@ export interface Participant {
 
 export interface SessionData {
   id: string;
+  adminId?: string;
   countries: string[];
   participants: Participant[];
   votes: {

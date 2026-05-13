@@ -38,6 +38,10 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
+  const isAdmin = useMemo(() => {
+    return user && sessionData?.adminId === user.uid;
+  }, [user, sessionData]);
+
   useEffect(() => {
     const initAuth = async () => {
       try {
@@ -70,6 +74,7 @@ export default function App() {
         // Initialize new session if it doesn't exist
         const initialData: SessionData = {
           id: sessionId,
+          adminId: user.uid,
           countries: ["Sweden", "Finland", "Ukraine", "Norway", "United Kingdom"],
           participants: [],
           votes: {}, // { [participantId]: { [countryName]: score } }
@@ -220,7 +225,12 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-black tracking-tight text-lg md:text-xl">EURO PARTY</h1>
-              <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Live Session: {sessionId}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Live Session: {sessionId}</p>
+                {isAdmin && (
+                  <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter border border-amber-500/20">ADMIN</span>
+                )}
+              </div>
             </div>
           </div>
           
@@ -289,24 +299,28 @@ export default function App() {
                 {sessionData.countries.map((c: string) => (
                   <div key={c} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl group hover:bg-slate-800/60 transition-colors">
                     <span className="font-semibold">{c}</span>
-                    <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all p-2">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {isAdmin && (
+                      <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all p-2">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <input 
-                  value={newCountry}
-                  onChange={(e) => setNewCountry(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addCountry()}
-                  placeholder="Add a country..." 
-                  className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                />
-                <button onClick={addCountry} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <input 
+                    value={newCountry}
+                    onChange={(e) => setNewCountry(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCountry()}
+                    placeholder="Add a country..." 
+                    className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                  />
+                  <button onClick={addCountry} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
@@ -334,18 +348,20 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <input 
-                  value={newParticipant}
-                  onChange={(e) => setNewParticipant(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
-                  placeholder="Friend's name..." 
-                  className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                />
-                <button onClick={addParticipant} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
+              {isAdmin && (
+                <div className="flex gap-2">
+                  <input 
+                    value={newParticipant}
+                    onChange={(e) => setNewParticipant(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
+                    placeholder="Friend's name..." 
+                    className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                  />
+                  <button onClick={addParticipant} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
