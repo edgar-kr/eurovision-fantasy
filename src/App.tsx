@@ -69,7 +69,16 @@ export default function App() {
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        setSessionData(docSnap.data() as SessionData);
+        const data = docSnap.data() as SessionData;
+        setSessionData(data);
+        
+        // Auto-restore participant session if the user already claimed a slot
+        if (user && !myParticipantId) {
+          const mySlot = data.participants.find(p => p.claimedBy === user.uid);
+          if (mySlot) {
+            setMyParticipantId(mySlot.id);
+          }
+        }
       } else {
         // Initialize new session if it doesn't exist
         const initialData: SessionData = {
