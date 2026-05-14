@@ -46,11 +46,21 @@ const normalizeVote = (v: any): Vote | null => {
 export default function App() {
   const { t, language, setLanguage } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
+  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+
+  const showToast = (message: string) => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 10000);
+  };
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
   const [newCountry, setNewCountry] = useState('');
   const [newParticipant, setNewParticipant] = useState('');
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
+  const prevSessionData = React.useRef<SessionData | null>(null);
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [resultsTab, setResultsTab] = useState<'overview' | 'advanced'>('overview');
@@ -118,6 +128,34 @@ export default function App() {
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data() as SessionData;
+        const prev = prevSessionData.current;
+
+        // Trigger Toasts
+        if (prev) {
+          if (data.participants.length > prev.participants.length) {
+             showToast("Someone joined the party!");
+          }
+          if (data.countries.length !== prev.countries.length) {
+             showToast("The country list was updated.");
+          }
+          data.countries.forEach(country => {
+             Object.entries(data.votes).forEach(([pId, v]) => {
+                const nv = normalizeVote(v[country]);
+                const pv = normalizeVote(prev.votes[pId]?.[country]);
+                if (nv && (!pv || nv.value !== pv.value) && (nv.value === 1 || nv.value === 12)) {
+                   const pName = data.participants.find(p => p.id === pId)?.name;
+                   showToast(`${pName} just gave ${nv.value} points to ${country}!`);
+                }
+             });
+             const allVoted = data.participants.every(p => !!data.votes[p.id]?.[country]);
+             const prevAllVoted = prev.participants.every(p => !!prev.votes[p.id]?.[country]);
+             if (allVoted && !prevAllVoted) {
+                showToast(`Everyone has finished voting for ${country}!`);
+             }
+          });
+        }
+        
+        prevSessionData.current = data;
         setSessionData(data);
         
         // Auto-restore participant session if the user already claimed a slot
@@ -344,6 +382,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-200 font-sans flex flex-col">
+      {/* Toasts */}
+      <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
+        {toasts.map(toast => (
+          <div key={toast.id} className="bg-slate-900 border border-white/10 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+            <span className="text-sm font-bold">{toast.message}</span>
+          </div>
+        ))}
+      </div>
+
       <header className="sticky top-0 z-50 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 p-3 md:p-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 md:gap-4">
