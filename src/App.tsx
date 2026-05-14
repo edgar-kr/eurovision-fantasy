@@ -45,6 +45,34 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
 
+  // Voting Rule Logic
+  const votingRules = useMemo(() => {
+    const countryCount = sessionData?.countries.length || 0;
+    const sets = countryCount > 20 ? 2 : 1;
+    const mandatorySlots = sets * 10;
+    const jokerSlots = Math.max(0, countryCount - mandatorySlots);
+    return { sets, mandatorySlots, jokerSlots };
+  }, [sessionData]);
+
+  const ballotStats = useMemo(() => {
+    if (!myParticipantId || !sessionData) return { mandatory: {}, jokerCount: 0 };
+    const myVotes = sessionData.votes[myParticipantId] || {};
+    const stats: { mandatory: { [key: number]: number }, jokerCount: number } = {
+      mandatory: {},
+      jokerCount: 0
+    };
+    
+    Object.values(myVotes).forEach(v => {
+      const nv = normalizeVote(v);
+      if (nv?.type === 'mandatory') {
+        stats.mandatory[nv.value] = (stats.mandatory[nv.value] || 0) + 1;
+      } else if (nv?.type === 'joker') {
+        stats.jokerCount++;
+      }
+    });
+    return stats;
+  }, [myParticipantId, sessionData]);
+
   const isAdmin = useMemo(() => {
     return user && sessionData?.adminId === user.uid;
   }, [user, sessionData]);
@@ -160,19 +188,34 @@ export default function App() {
     
     const currentBallot = { ...(sessionData.votes[myParticipantId] || {}) };
     
-    // Clear any existing vote for this country
-    delete currentBallot[country];
-
+    // If setting a score (not clearing)
     if (score > 0) {
       if (type === 'mandatory') {
-        // Rule: Each mandatory vote (1-12) can be used only once.
-        // If this score was already used elsewhere as mandatory, clear it.
-        Object.keys(currentBallot).forEach(key => {
-          const v = normalizeVote(currentBallot[key]);
-          if (v?.type === 'mandatory' && v.value === score) delete currentBallot[key];
-        });
+        const count = ballotStats.mandatory[score] || 0;
+        // If we already reached the limit for this point value in this ballot
+        if (count >= votingRules.sets) {
+          // If this country was already using this mandatory score, we are toggling it OFF
+          const existing = normalizeVote(currentBallot[country]);
+          if (existing?.type === 'mandatory' && existing.value === score) {
+            delete currentBallot[country];
+          } else {
+            // Otherwise, we don't allow adding more than the set limit
+            return;
+          }
+        } else {
+          currentBallot[country] = { value: score, type };
+        }
+      } else {
+        // Joker Type
+        if (ballotStats.jokerCount >= votingRules.jokerSlots) {
+          // Only allow if we are changing the value of an existing Joker for THIS country
+          const existing = normalizeVote(currentBallot[country]);
+          if (existing?.type !== 'joker') return;
+        }
+        currentBallot[country] = { value: score, type };
       }
-      currentBallot[country] = { value: score, type };
+    } else {
+      delete currentBallot[country];
     }
 
     await updateDoc(docRef, {
@@ -256,10 +299,10 @@ export default function App() {
           <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={copyInviteLink}
-              className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border border-white/5"
+              className={`flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${copied ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-slate-800 hover:bg-slate-700 border-white/5'}`}
             >
               {copied ? <Check className="w-3 h-3 md:w-4 md:h-4 text-green-400" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4" />}
-              <span className="hidden xs:inline">{copied ? 'Copied!' : 'Invite'}</span>
+              <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
             </button>
             <button 
               onClick={() => setShowResults(!showResults)}
@@ -431,11 +474,11 @@ export default function App() {
                     <thead>
                       <tr className="bg-slate-950/50">
                         <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
-                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Points</th>
-                        {sessionData.countries.length > 10 && (
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Rank</th>
+                        {votingRules.jokerSlots > 0 && (
                           <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Joker</th>
                         )}
-                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Score</th>
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Total</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -450,37 +493,41 @@ export default function App() {
                             <td className="p-4 md:p-6">
                               <div className="flex flex-wrap gap-1.5 md:gap-2">
                                 {POINT_SCALE.map(pt => {
-                                  const isUsedMandatory = Object.values(myVotes).some(v => {
-                                    const nv = normalizeVote(v);
-                                    return nv?.type === 'mandatory' && nv.value === pt;
-                                  });
+                                  const usageCount = ballotStats.mandatory[pt] || 0;
                                   const isSelected = !isJokerMode && currentVote?.value === pt;
+                                  const isFullyUsed = usageCount >= votingRules.sets;
                                   
                                   return (
                                     <button
                                       key={pt}
-                                      onClick={() => castVote(country, isSelected ? 0 : pt, 'mandatory')}
+                                      onClick={() => castVote(country, pt, 'mandatory')}
                                       className={`
-                                        w-11 h-11 md:w-10 md:h-10 rounded-xl text-sm font-black transition-all
+                                        w-11 h-11 md:w-10 md:h-10 rounded-xl text-sm font-black transition-all relative
                                         ${isSelected ? 'bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
-                                          (isUsedMandatory && !isSelected) ? 'bg-slate-800/50 text-slate-700 opacity-30 cursor-not-allowed' : 
+                                          (isFullyUsed && !isSelected) ? 'bg-slate-800/50 text-slate-700 opacity-30 cursor-not-allowed' : 
                                           'bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 border border-white/5'}
                                       `}
                                     >
                                       {pt}
+                                      {votingRules.sets > 1 && !isSelected && (
+                                        <span className="absolute -top-1 -right-1 bg-slate-700 text-[8px] w-4 h-4 rounded-full flex items-center justify-center border border-white/10">
+                                          {votingRules.sets - usageCount}
+                                        </span>
+                                      )}
                                     </button>
                                   );
                                 })}
                               </div>
                             </td>
-                            {sessionData.countries.length > 10 && (
+                            {votingRules.jokerSlots > 0 && (
                               <td className="p-4 md:p-6 text-center">
                                 <select 
                                   value={isJokerMode ? currentVote.value : 0}
                                   onChange={(e) => castVote(country, parseInt(e.target.value), 'joker')}
-                                  className={`bg-slate-800 text-xs font-black p-2 rounded-lg border outline-none transition-all ${isJokerMode ? 'border-amber-500 text-amber-500' : 'border-white/5 text-slate-500'}`}
+                                  disabled={!isJokerMode && ballotStats.jokerCount >= votingRules.jokerSlots}
+                                  className={`bg-slate-800 text-xs font-black p-2 rounded-lg border outline-none transition-all ${isJokerMode ? 'border-amber-500 text-amber-500' : 'border-white/5 text-slate-500 disabled:opacity-20'}`}
                                 >
-                                  <option value="0">NO JOKER</option>
+                                  <option value="0">OFF</option>
                                   {POINT_SCALE.map(pt => (
                                     <option key={pt} value={pt}>{pt} PTS</option>
                                   ))}
@@ -492,9 +539,8 @@ export default function App() {
                                 <div className="inline-flex flex-col items-center gap-1">
                                   <span className={`px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-black shadow-inner flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
                                     {isJokerMode && <Star className="w-3 h-3 fill-amber-500" />}
-                                    {currentVote.value} PTS
+                                    {currentVote.value}
                                   </span>
-                                  <span className="text-[8px] font-black uppercase opacity-40">{isJokerMode ? 'Joker' : 'Rank'}</span>
                                 </div>
                               ) : (
                                 <span className="text-slate-700 text-sm font-bold tracking-widest">—</span>
@@ -508,36 +554,52 @@ export default function App() {
                 </div>
 
                 <div className="p-8 bg-slate-950/40 border-t border-white/5">
-                  <div className="flex flex-wrap items-center gap-6 text-xs font-bold uppercase tracking-widest text-slate-500">
-                    <div className="flex flex-col gap-3">
-                      <span className="text-[10px] opacity-50">Mandatory Points Used:</span>
-                      <div className="flex gap-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <span>Mandatory Points ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
+                        <span>{Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
                         {POINT_SCALE.map(pt => {
-                           const isUsed = Object.values(sessionData.votes[myParticipantId!] || {}).some(v => {
-                             const nv = normalizeVote(v);
-                             return nv?.type === 'mandatory' && nv.value === pt;
-                           });
+                           const count = ballotStats.mandatory[pt] || 0;
+                           const isFullyUsed = count >= votingRules.sets;
                            return (
                             <div 
                               key={pt} 
-                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border transition-all ${isUsed ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.1)]' : 'bg-slate-900 border-white/5 text-slate-700'}`}
+                              className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center transition-all border ${isFullyUsed ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-lg shadow-indigo-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}
                             >
-                              {pt}
+                              <span className="text-[10px] font-black">{pt}</span>
+                              {votingRules.sets > 1 && (
+                                <div className="flex gap-0.5 mt-0.5">
+                                  {[...Array(votingRules.sets)].map((_, i) => (
+                                    <div key={i} className={`w-1 h-1 rounded-full ${i < count ? 'bg-indigo-400' : 'bg-slate-800'}`} />
+                                  ))}
+                                </div>
+                              )}
                             </div>
                            );
                         })}
                       </div>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <span className="flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                        Standard: Use each point exactly once
-                      </span>
-                      {sessionData.countries.length > 10 && (
-                        <span className="flex items-center gap-2 text-amber-500/70">
-                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                          Joker: Extra points (can be reused)
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <span>Joker Slots</span>
+                        <span className={ballotStats.jokerCount >= votingRules.jokerSlots ? 'text-amber-500' : ''}>
+                          {ballotStats.jokerCount} / {votingRules.jokerSlots} USED
                         </span>
+                      </div>
+                      {votingRules.jokerSlots > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {[...Array(votingRules.jokerSlots)].map((_, i) => (
+                            <div key={i} className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all ${i < ballotStats.jokerCount ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-lg shadow-amber-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}>
+                              <Star className={`w-4 h-4 ${i < ballotStats.jokerCount ? 'fill-amber-500' : ''}`} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-600 font-bold italic uppercase tracking-tighter">Add more than 10 countries to enable Jokers</p>
                       )}
                     </div>
                   </div>
