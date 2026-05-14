@@ -185,10 +185,23 @@ export default function App() {
   };
 
   const removeCountry = async (country: string) => {
-    if (!sessionId) return;
+    if (!sessionId || !sessionData) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    
+    // Remove the country from the list
+    const newCountries = sessionData.countries.filter(c => c !== country);
+    
+    // Clean up votes from participants
+    const newVotes = { ...sessionData.votes };
+    Object.keys(newVotes).forEach(participantId => {
+      if (newVotes[participantId][country]) {
+        delete newVotes[participantId][country];
+      }
+    });
+
     await updateDoc(docRef, {
-      countries: arrayRemove(country)
+      countries: newCountries,
+      votes: newVotes
     });
   };
 
@@ -408,7 +421,7 @@ export default function App() {
                       <div className="flex items-center gap-1">
                         <button onClick={() => moveCountry(idx, 'up')} disabled={idx === 0} className="text-slate-500 hover:text-indigo-400 disabled:opacity-10 p-1.5"><ChevronUp className="w-4 h-4" /></button>
                         <button onClick={() => moveCountry(idx, 'down')} disabled={idx === sessionData.countries.length - 1} className="text-slate-500 hover:text-indigo-400 disabled:opacity-10 p-1.5"><ChevronDown className="w-4 h-4" /></button>
-                        <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1.5 ml-1"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 transition-all p-1.5 ml-1"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
                   ))}
