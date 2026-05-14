@@ -152,16 +152,16 @@ export default function App() {
         // Trigger Toasts
         if (prev) {
           if (data.participants.length > prev.participants.length) {
-             showToast("Someone joined the party!", 'default');
+             showToast(t('party_joined'), 'default');
           }
           if (data.countries.length !== prev.countries.length) {
-             showToast("The country list was updated.", 'default');
+             showToast(t('list_updated'), 'default');
           }
           if (data.votingLocked !== prev.votingLocked) {
              if (data.votingLocked) {
-                showToast("VOTING IS NOW LOCKED! 🚫", 'locked');
+                showToast(t('voting_locked_toast'), 'locked');
              } else {
-                showToast("VOTING IS NOW UNLOCKED! 💜", 'unlocked');
+                showToast(t('voting_unlocked_toast'), 'unlocked');
              }
           }
           data.countries.forEach(country => {
@@ -170,13 +170,13 @@ export default function App() {
                 const pv = normalizeVote(prev.votes[pId]?.[country]);
                 if (nv && (!pv || nv.value !== pv.value) && (nv.value === 1 || nv.value === 12)) {
                    const pName = data.participants.find(p => p.id === pId)?.name;
-                   showToast(`${pName} just gave ${nv.value} points to ${country}!`, nv.value === 12 ? 'points12' : 'points1');
+                   showToast(t('points_given').replace('{name}', pName || '').replace('{points}', nv.value.toString()).replace('{country}', country), nv.value === 12 ? 'points12' : 'points1');
                 }
              });
              const allVoted = data.participants.every(p => !!data.votes[p.id]?.[country]);
              const prevAllVoted = prev.participants.every(p => !!prev.votes[p.id]?.[country]);
              if (allVoted && !prevAllVoted) {
-                showToast(`Everyone has finished voting for ${country}!`, 'voted');
+                showToast(t('everyone_voted').replace('{country}', country), 'voted');
              }
           });
         }
@@ -226,7 +226,7 @@ export default function App() {
     const name = newCountry.trim();
     
     if (sessionData.countries.some(c => c.toLowerCase() === name.toLowerCase())) {
-      alert("This country is already in the list!");
+      alert(t('country_exists'));
       return;
     }
 
@@ -276,7 +276,7 @@ export default function App() {
     const name = newParticipant.trim();
 
     if (sessionData.participants.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-      alert("This participant is already in the list!");
+      alert(t('participant_exists'));
       return;
     }
 
@@ -300,7 +300,7 @@ export default function App() {
 
   const removeParticipant = async (pId: string) => {
     if (!sessionId || !sessionData || !isAdmin) return;
-    if (!confirm(`Are you sure you want to remove this participant? All their votes will be lost.`)) return;
+    if (!confirm(t('confirm_remove_participant'))) return;
     
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     const updatedParticipants = sessionData.participants.filter(p => p.id !== pId);
@@ -439,7 +439,7 @@ export default function App() {
             FANTASY<br />EUROVISION
           </h1>
           <p className="text-slate-400 text-lg max-w-md mx-auto">
-            Host the ultimate watch party. Real-time voting, live leaderboards, and zero math required.
+            {t('host_party')}
           </p>
         </div>
         <button 
@@ -447,7 +447,7 @@ export default function App() {
           className="group relative bg-indigo-600 hover:bg-indigo-500 text-white font-black py-5 px-12 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(79,70,229,0.4)]"
         >
           <span className="flex items-center gap-3 text-xl">
-            CREATE NEW SESSION <Plus className="w-6 h-6" />
+            {t('create_session')} <Plus className="w-6 h-6" />
           </span>
         </button>
       </div>
@@ -458,7 +458,7 @@ export default function App() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <RefreshCw className="w-12 h-12 text-indigo-500 animate-spin" />
-        <p className="text-indigo-300 font-medium animate-pulse">Syncing with the Cloud...</p>
+        <p className="text-indigo-300 font-medium animate-pulse">{t('syncing')}</p>
       </div>
     );
   }
@@ -746,7 +746,7 @@ export default function App() {
                                  {res.name}
                                  {globalTop10.includes(res.name) && <Crown className="w-3 h-3 text-amber-500" />}
                                </td>
-                               <td className="p-4 font-black text-indigo-400 text-right">{res.score} PTS</td>
+                               <td className="p-4 font-black text-indigo-400 text-right">{res.score} {t('pts')}</td>
                              </tr>
                            ))}
                          </tbody>
@@ -759,10 +759,10 @@ export default function App() {
                       <div className="bg-indigo-600/10 border border-indigo-500/20 p-4 rounded-2xl flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <Crown className="w-5 h-5 text-amber-500" />
-                          <span className="text-xs font-black uppercase tracking-widest">Official Top 10 Selection</span>
+                          <span className="text-xs font-black uppercase tracking-widest">{t('official_selection')}</span>
                         </div>
                         <span className={`text-sm font-black ${globalTop10.length === 10 ? 'text-green-500' : 'text-indigo-400'}`}>
-                          {globalTop10.length} / 10 SELECTED
+                          {t('selected_count').replace('{count}', globalTop10.length.toString())}
                         </span>
                       </div>
                     )}
@@ -932,7 +932,7 @@ export default function App() {
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
                           <span>{t('mandatory_points')} ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
                           <span className={Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0) >= votingRules.mandatorySlots ? 'text-green-500' : ''}>
-                            {Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED
+                            {Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} {t('used')}
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -960,9 +960,9 @@ export default function App() {
 
                       <div className="space-y-4">
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          <span>Joker Slots</span>
+                          <span>{t('joker_slots')}</span>
                           <span className={ballotStats.jokerCount >= votingRules.jokerSlots ? 'text-amber-500' : ''}>
-                            {ballotStats.jokerCount} / {votingRules.jokerSlots} USED
+                            {ballotStats.jokerCount} / {votingRules.jokerSlots} {t('used')}
                           </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
@@ -1118,7 +1118,7 @@ export default function App() {
                   <div className="md:hidden space-y-4 p-4">
                     {filteredCountries.length === 0 ? (
                       <div className="py-12 text-center">
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No countries found matching "{searchTerm}"</p>
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">{t('no_countries_found').replace('{term}', searchTerm)}</p>
                       </div>
                     ) : (
                       filteredCountries

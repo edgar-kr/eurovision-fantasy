@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star, Trash2 } from 'lucide-react';
 import { Vote } from '../types';
+import { useTranslation } from '../i18n/context';
 
 interface MobileVotingCardProps {
   country: string;
@@ -23,6 +24,7 @@ export default function MobileVotingCard({
   jokerSlotsAvailable,
   votingLocked = false
 }: MobileVotingCardProps) {
+  const { t } = useTranslation();
   const isJokerMode = currentVote?.type === 'joker';
 
   return (
@@ -33,7 +35,7 @@ export default function MobileVotingCard({
           <div className="flex items-center gap-2">
             <div className={`px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/20'}`}>
               {isJokerMode && <Star className="w-3 h-3 fill-amber-500" />}
-              {currentVote.value} PTS
+              {currentVote.value} {t('pts')}
             </div>
             {!votingLocked && (
               <button 
@@ -49,7 +51,7 @@ export default function MobileVotingCard({
       
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mandatory Points</label>
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('mandatory_points')}</label>
         </div>
         <div className="grid grid-cols-5 gap-2">
           {pointScale.map(pt => {
@@ -86,12 +88,12 @@ export default function MobileVotingCard({
         <div className="space-y-3 pt-4 border-t border-white/5">
           <div className="flex items-center justify-between">
             <label className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-2">
-              <Star className="w-3 h-3 fill-amber-500/50" /> Joker Point
+              <Star className="w-3 h-3 fill-amber-500/50" /> {t('joker_point')}
             </label>
             {!isJokerMode && !jokerSlotsAvailable && !votingLocked && (
-              <span className="text-[8px] text-slate-600 font-bold uppercase">No slots left</span>
+              <span className="text-[8px] text-slate-600 font-bold uppercase">{t('no_slots_left')}</span>
             )}
-            {votingLocked && <span className="text-[8px] text-red-500 font-bold uppercase">LOCKED</span>}
+            {votingLocked && <span className="text-[8px] text-red-500 font-bold uppercase">{t('locked_badge')}</span>}
           </div>
           <div className="grid grid-cols-5 gap-2">
             {pointScale.map(pt => (
