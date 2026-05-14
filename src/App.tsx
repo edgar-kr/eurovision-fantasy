@@ -74,6 +74,7 @@ export default function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   const [mobileTab, setMobileTab] = useState<'ballot' | 'standings' | 'management'>('ballot');
   const [searchTerm, setSearchTerm] = useState('');
+  const [advancedSort, setAdvancedSort] = useState<{ key: 'name' | 'score', direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -691,26 +692,17 @@ export default function App() {
 
                 {resultsTab === 'overview' ? (
                   <div className="space-y-12">
-                    {globalTop10.length > 0 ? (
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-                        {globalTop10.slice(0, 3).map((name, idx) => {
-                          const res = results.find(r => r.name === name) || { name, score: 0 };
-                          return (
-                            <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
-                              <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
-                              <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
-                              <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">{t('points')}</span></div>
-                              {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 bg-slate-900/40 rounded-3xl border border-dashed border-white/10">
-                        <Crown className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                        <p className="text-slate-500 font-bold uppercase tracking-widest">Waiting for official results...</p>
-                      </div>
-                    )}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+                      {results.slice(0, 3).map((res, idx) => (
+                        <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
+                          <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
+                          <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
+                          <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">{t('points')}</span></div>
+                          {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
+                          {globalTop10.includes(res.name) && <Crown className="absolute top-2 right-2 w-5 h-5 text-amber-500 animate-pulse" />}
+                        </div>
+                      ))}
+                    </div>
                     
                     <div className="max-w-2xl mx-auto overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40">
                        <table className="w-full text-left border-collapse">
@@ -722,12 +714,12 @@ export default function App() {
                            </tr>
                          </thead>
                          <tbody>
-                           {(globalTop10.length > 0 ? results.filter(r => globalTop10.includes(r.name)) : results.slice(0, 10)).map((res, idx) => (
+                           {results.slice(0, 10).map((res, idx) => (
                              <tr key={res.name} className="border-t border-white/5 hover:bg-white/5 transition-colors">
                                <td className="p-4 font-black text-slate-500">#{idx + 1}</td>
                                <td className="p-4 font-bold uppercase tracking-tight flex items-center gap-2">
                                  {res.name}
-                                 {globalTop10.includes(res.name) && <Check className="w-3 h-3 text-green-500" />}
+                                 {globalTop10.includes(res.name) && <Crown className="w-3 h-3 text-amber-500" />}
                                </td>
                                <td className="p-4 font-black text-indigo-400 text-right">{res.score} PTS</td>
                              </tr>
@@ -754,7 +746,14 @@ export default function App() {
                       <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                           <tr className="bg-slate-950/50">
-                            <th className="sticky left-0 z-30 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5 min-w-[140px] md:min-w-0">Country</th>
+                            <th 
+                              className="sticky left-0 z-30 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5 min-w-[140px] md:min-w-0 cursor-pointer hover:text-indigo-400 transition-colors"
+                              onClick={() => setAdvancedSort(prev => ({ key: 'name', direction: prev.key === 'name' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                            >
+                              <div className="flex items-center gap-2">
+                                Country {advancedSort.key === 'name' && (advancedSort.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                              </div>
+                            </th>
                             {sessionData.participants.map(p => {
                               const userVotes = sessionData.votes[p.id] || {};
                               const userTop10 = Object.entries(userVotes)
@@ -776,19 +775,34 @@ export default function App() {
                                 </th>
                               );
                             })}
-                            <th className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5">TOTAL</th>
+                            <th 
+                              className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5 cursor-pointer hover:bg-indigo-500/10 transition-colors"
+                              onClick={() => setAdvancedSort(prev => ({ key: 'score', direction: prev.key === 'score' && prev.direction === 'desc' ? 'asc' : 'desc' }))}
+                            >
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="flex items-center gap-1">
+                                  TOTAL {advancedSort.key === 'score' && (advancedSort.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                </div>
+                                <span className="bg-green-500/20 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/30">
+                                  <Check className="w-2 h-2" /> {aggregateTop10.filter(c => globalTop10.includes(c)).length}/10 MATCH
+                                </span>
+                              </div>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {sessionData.countries.map(country => {
-                            const total = results.find(r => r.name === country)?.score || 0;
+                          {[...sessionData.countries]
+                            .map(name => ({ name, score: results.find(r => r.name === name)?.score || 0 }))
+                            .sort((a, b) => {
+                              const dir = advancedSort.direction === 'asc' ? 1 : -1;
+                              if (advancedSort.key === 'name') return a.name.localeCompare(b.name) * dir;
+                              return (a.score - b.score) * dir;
+                            })
+                            .map(({ name: country, score: total }) => {
                             const isOfficial = globalTop10.includes(country);
                             const isAggregateTop10 = aggregateTop10.includes(country);
                             const globalRank = results.findIndex(r => r.name === country) + 1;
 
-                            // Color logic:
-                            // Green: Official + Aggregate Top 10
-                            // Orange: Aggregate Top 10 (User consensus) only
                             let rowClass = '';
                             let badgeColor = 'text-indigo-400';
                             if (isOfficial && isAggregateTop10) {
