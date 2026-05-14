@@ -20,7 +20,11 @@ import {
   LogOut, 
   Crown, 
   Music, 
-  Star 
+  Star,
+  ChevronUp,
+  ChevronDown,
+  LayoutGrid,
+  ListOrdered
 } from 'lucide-react';
 import { db, auth, appId } from './firebase';
 import { SessionData, Participant, Vote } from './types';
@@ -44,6 +48,7 @@ export default function App() {
   const [myParticipantId, setMyParticipantId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [resultsTab, setResultsTab] = useState<'overview' | 'advanced'>('overview');
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -145,12 +150,32 @@ export default function App() {
   };
 
   const addCountry = async () => {
-    if (!newCountry.trim() || !sessionId) return;
+    if (!newCountry.trim() || !sessionId || !sessionData) return;
+    const name = newCountry.trim();
+    
+    if (sessionData.countries.some(c => c.toLowerCase() === name.toLowerCase())) {
+      alert("This country is already in the list!");
+      return;
+    }
+
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     await updateDoc(docRef, {
-      countries: arrayUnion(newCountry.trim())
+      countries: arrayUnion(name)
     });
     setNewCountry('');
+  };
+
+  const moveCountry = async (index: number, direction: 'up' | 'down') => {
+    if (!sessionId || !sessionData) return;
+    const newCountries = [...sessionData.countries];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (targetIndex < 0 || targetIndex >= newCountries.length) return;
+    
+    [newCountries[index], newCountries[targetIndex]] = [newCountries[targetIndex], newCountries[index]];
+    
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    await updateDoc(docRef, { countries: newCountries });
   };
 
   const removeCountry = async (country: string) => {
@@ -162,10 +187,17 @@ export default function App() {
   };
 
   const addParticipant = async () => {
-    if (!newParticipant.trim() || !sessionId) return;
+    if (!newParticipant.trim() || !sessionId || !sessionData) return;
+    const name = newParticipant.trim();
+
+    if (sessionData.participants.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      alert("This participant is already in the list!");
+      return;
+    }
+
     const pId = Math.random().toString(36).substring(2, 7);
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
-    const newP: Participant = { id: pId, name: newParticipant.trim(), claimedBy: null };
+    const newP: Participant = { id: pId, name: name, claimedBy: null };
     await updateDoc(docRef, {
       participants: arrayUnion(newP)
     });
@@ -319,34 +351,106 @@ export default function App() {
         
         {/* Results Podium Overlay */}
         {showResults && (
-          <section className="bg-gradient-to-br from-indigo-950/50 via-slate-900/80 to-purple-950/30 border border-indigo-500/30 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-12 text-center animate-in fade-in zoom-in duration-500 shadow-2xl relative overflow-hidden">
+          <section className="bg-gradient-to-br from-indigo-950/50 via-slate-900/80 to-purple-950/30 border border-indigo-500/30 rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 lg:p-12 animate-in fade-in zoom-in duration-500 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
-            <h2 className="text-2xl md:text-4xl font-black mb-8 md:mb-12 flex items-center justify-center gap-3 md:gap-4">
-              <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
-              THE FINAL STANDINGS
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8 mb-8 md:mb-12">
-              {results.slice(0, 3).map((res, idx) => (
-                <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
-                  <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
-                  <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
-                  <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">pts</span></div>
-                  {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
-                </div>
-              ))}
-            </div>
             
-            <div className="max-w-xl mx-auto space-y-3">
-               {results.slice(3).map((res, idx) => (
-                 <div key={res.name} className="flex items-center justify-between bg-slate-900/50 px-6 py-3 rounded-2xl border border-white/5">
-                   <div className="flex items-center gap-4">
-                     <span className="text-slate-500 font-bold text-sm">#{idx + 4}</span>
-                     <span className="font-bold uppercase tracking-wide">{res.name}</span>
-                   </div>
-                   <span className="font-black text-indigo-400">{res.score} pts</span>
-                 </div>
-               ))}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
+              <h2 className="text-2xl md:text-3xl font-black flex items-center gap-3 md:gap-4">
+                <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
+                STANDINGS
+              </h2>
+
+              <div className="flex bg-slate-950/50 p-1 rounded-2xl border border-white/5">
+                <button 
+                  onClick={() => setResultsTab('overview')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${resultsTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <ListOrdered className="w-4 h-4" /> OVERVIEW
+                </button>
+                <button 
+                  onClick={() => setResultsTab('advanced')}
+                  className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${resultsTab === 'advanced' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  <LayoutGrid className="w-4 h-4" /> ADVANCED
+                </button>
+              </div>
             </div>
+
+            {resultsTab === 'overview' ? (
+              <div className="space-y-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+                  {results.slice(0, 3).map((res, idx) => (
+                    <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
+                      <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
+                      <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
+                      <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">pts</span></div>
+                      {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="max-w-2xl mx-auto overflow-hidden rounded-2xl border border-white/5 bg-slate-900/50">
+                   <table className="w-full text-left border-collapse">
+                     <thead>
+                       <tr className="bg-slate-950/50">
+                         <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Rank</th>
+                         <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Country</th>
+                         <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Points</th>
+                       </tr>
+                     </thead>
+                     <tbody>
+                       {results.slice(0, 10).map((res, idx) => (
+                         <tr key={res.name} className="border-t border-white/5 hover:bg-white/5 transition-colors">
+                           <td className="p-4 font-black text-slate-500">#{idx + 1}</td>
+                           <td className="p-4 font-bold uppercase tracking-tight">{res.name}</td>
+                           <td className="p-4 font-black text-indigo-400 text-right">{res.score} PTS</td>
+                         </tr>
+                       ))}
+                     </tbody>
+                   </table>
+                </div>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-3xl border border-white/5 bg-slate-900/50">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-slate-950/50">
+                      <th className="sticky left-0 z-20 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5">Country</th>
+                      {sessionData.participants.map(p => (
+                        <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[100px]">{p.name}</th>
+                      ))}
+                      <th className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessionData.countries.map(country => {
+                      const total = results.find(r => r.name === country)?.score || 0;
+                      return (
+                        <tr key={country} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
+                          <td className="sticky left-0 z-10 bg-slate-900 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5">{country}</td>
+                          {sessionData.participants.map(p => {
+                            const vote = normalizeVote(sessionData.votes[p.id]?.[country]);
+                            
+                            // Highlight if in user's top 10 rankings
+                            const userVotes = Object.values(sessionData.votes[p.id] || {});
+                            const sortedValues = userVotes.map(v => normalizeVote(v)?.value || 0).sort((a,b) => b-a);
+                            const topThreshold = sortedValues[9] || 0;
+                            const isTop = vote && vote.value > 0 && vote.value >= topThreshold;
+
+                            return (
+                              <td key={p.id} className={`p-4 text-center text-sm font-black transition-all ${isTop ? 'bg-indigo-600/20 text-indigo-300 ring-1 ring-inset ring-indigo-500/30' : 'text-slate-600'}`}>
+                                {vote?.value || '—'}
+                              </td>
+                            );
+                          })}
+                          <td className="p-4 text-center font-black text-indigo-400 bg-indigo-500/5">{total}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
 
