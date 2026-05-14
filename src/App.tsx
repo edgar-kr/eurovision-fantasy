@@ -24,7 +24,9 @@ import {
   ChevronUp,
   ChevronDown,
   LayoutGrid,
-  ListOrdered
+  ListOrdered,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { db, auth, appId } from './firebase';
 import { SessionData, Participant, Vote } from './types';
@@ -49,6 +51,8 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [resultsTab, setResultsTab] = useState<'overview' | 'advanced'>('overview');
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -214,6 +218,16 @@ export default function App() {
     setMyParticipantId(pId);
   };
 
+  const releaseSlot = async () => {
+    if (!sessionId || !myParticipantId || !sessionData) return;
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    const updatedParticipants = sessionData.participants.map((p) => 
+      p.id === myParticipantId ? { ...p, claimedBy: null } : p
+    );
+    await updateDoc(docRef, { participants: updatedParticipants });
+    setMyParticipantId(null);
+  };
+
   const castVote = async (country: string, score: number, type: 'mandatory' | 'joker' = 'mandatory') => {
     if (!myParticipantId || !sessionId || !sessionData) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
@@ -273,6 +287,8 @@ export default function App() {
       .map(([name, score]) => ({ name, score }))
       .sort((a, b) => b.score - a.score);
   }, [sessionData]);
+
+  const globalTop10 = useMemo(() => results.slice(0, 10).map(r => r.name), [results]);
 
   if (!sessionId) {
     return (
@@ -416,18 +432,44 @@ export default function App() {
                   <thead>
                     <tr className="bg-slate-950/50">
                       <th className="sticky left-0 z-20 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5">Country</th>
-                      {sessionData.participants.map(p => (
-                        <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[100px]">{p.name}</th>
-                      ))}
+                      {sessionData.participants.map(p => {
+                        // Calculate User's "Guess Accuracy"
+                        const userVotes = sessionData.votes[p.id] || {};
+                        const userTop10 = Object.entries(userVotes)
+                          .map(([name, v]) => ({ name, value: normalizeVote(v)?.value || 0 }))
+                          .sort((a,b) => b.value - a.value)
+                          .slice(0, 10)
+                          .map(v => v.name);
+                        
+                        const matchCount = userTop10.filter(name => globalTop10.includes(name)).length;
+
+                        return (
+                          <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
+                            <div className="flex flex-col items-center gap-1">
+                              <span>{p.name}</span>
+                              <span className="bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/20">
+                                <Check className="w-2 h-2" /> {matchCount}/10 MATCH
+                              </span>
+                            </div>
+                          </th>
+                        );
+                      })}
                       <th className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessionData.countries.map(country => {
                       const total = results.find(r => r.name === country)?.score || 0;
+                      const isGlobalTop10 = globalTop10.includes(country);
+                      const globalRank = results.findIndex(r => r.name === country) + 1;
+
                       return (
-                        <tr key={country} className="border-b border-white/5 hover:bg-white/5 transition-colors group">
-                          <td className="sticky left-0 z-10 bg-slate-900 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5">{country}</td>
+                        <tr key={country} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${isGlobalTop10 ? 'bg-amber-500/[0.03]' : ''}`}>
+                          <td className={`sticky left-0 z-10 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${isGlobalTop10 ? 'bg-amber-950/20 text-amber-200' : 'bg-slate-900'}`}>
+                            {isGlobalTop10 && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
+                            <span className="flex-1 truncate">{country}</span>
+                            {isGlobalTop10 && <span className="text-[8px] font-black opacity-40">#{globalRank}</span>}
+                          </td>
                           {sessionData.participants.map(p => {
                             const vote = normalizeVote(sessionData.votes[p.id]?.[country]);
                             
@@ -443,7 +485,7 @@ export default function App() {
                               </td>
                             );
                           })}
-                          <td className="p-4 text-center font-black text-indigo-400 bg-indigo-500/5">{total}</td>
+                          <td className={`p-4 text-center font-black bg-indigo-500/5 ${isGlobalTop10 ? 'text-amber-500' : 'text-indigo-400'}`}>{total}</td>
                         </tr>
                       );
                     })}
@@ -555,22 +597,112 @@ export default function App() {
               </div>
             ) : (
               <div className="bg-slate-900/30 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-sm">
-                <div className="p-8 border-b border-white/5 bg-slate-900/50 flex items-center justify-between">
+                <div className="p-6 md:p-8 border-b border-white/5 bg-slate-900/50 flex items-center justify-between">
                   <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20 uppercase">
+                    <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20 uppercase text-white">
                       {sessionData.participants.find((p) => p.id === myParticipantId)?.name.charAt(0)}
                     </div>
                     <div>
-                      <h3 className="text-2xl font-black tracking-tight uppercase">Your Ballot</h3>
+                      <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">Your Ballot</h3>
                       <p className="text-xs text-indigo-400 font-bold tracking-widest uppercase">Voting as {sessionData.participants.find((p) => p.id === myParticipantId)?.name}</p>
                     </div>
                   </div>
                   <button 
-                    onClick={() => setMyParticipantId(null)}
-                    className="group flex items-center gap-2 text-slate-500 hover:text-white font-bold text-sm transition-all bg-slate-800/50 px-4 py-2 rounded-xl border border-white/5"
+                    onClick={releaseSlot}
+                    className="group flex items-center gap-2 text-slate-500 hover:text-red-400 font-bold text-xs transition-all bg-slate-800/50 px-3 py-2 rounded-xl border border-white/5"
                   >
-                    <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Sign Out
+                    <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+                    <span className="hidden xs:inline">Sign Out</span>
                   </button>
+                </div>
+
+                <div className="p-6 md:p-8 border-b border-white/5 bg-slate-950/20 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <span>Mandatory Points ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
+                        <span>{Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {POINT_SCALE.map(pt => {
+                           const count = ballotStats.mandatory[pt] || 0;
+                           const isFullyUsed = count >= votingRules.sets;
+                           return (
+                            <div 
+                              key={pt} 
+                              className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center transition-all border ${isFullyUsed ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-lg shadow-indigo-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}
+                            >
+                              <span className="text-[10px] font-black">{pt}</span>
+                              {votingRules.sets > 1 && (
+                                <div className="flex gap-0.5 mt-0.5">
+                                  {[...Array(votingRules.sets)].map((_, i) => (
+                                    <div key={i} className={`w-1 h-1 rounded-full ${i < count ? 'bg-indigo-400' : 'bg-slate-800'}`} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                           );
+                        })}
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                        <span>Joker Slots</span>
+                        <span className={ballotStats.jokerCount >= votingRules.jokerSlots ? 'text-amber-500' : ''}>
+                          {ballotStats.jokerCount} / {votingRules.jokerSlots} USED
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {votingRules.jokerSlots > 0 ? (
+                          [...Array(votingRules.jokerSlots)].map((_, i) => (
+                            <div key={i} className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all ${i < ballotStats.jokerCount ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-lg shadow-amber-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}>
+                              <Star className={`w-4 h-4 ${i < ballotStats.jokerCount ? 'fill-amber-500' : ''}`} />
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-[10px] text-slate-600 font-bold italic uppercase tracking-tighter">Add more countries to enable Jokers</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Show</span>
+                      <select 
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(parseInt(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="bg-slate-800 text-[10px] font-black p-1.5 rounded-lg border border-white/5 outline-none text-indigo-400"
+                      >
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="999">ALL</option>
+                      </select>
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Countries</span>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                       <button 
+                         disabled={currentPage === 1}
+                         onClick={() => setCurrentPage(prev => prev - 1)}
+                         className="p-2 bg-slate-800 rounded-xl disabled:opacity-20 hover:text-indigo-400 transition-colors border border-white/5"
+                       >
+                         <ChevronLeft className="w-4 h-4" />
+                       </button>
+                       <span className="text-[10px] font-black text-indigo-400 tracking-widest uppercase">Page {currentPage} of {Math.ceil(sessionData.countries.length / pageSize)}</span>
+                       <button 
+                         disabled={currentPage >= Math.ceil(sessionData.countries.length / pageSize)}
+                         onClick={() => setCurrentPage(prev => prev + 1)}
+                         className="p-2 bg-slate-800 rounded-xl disabled:opacity-20 hover:text-indigo-400 transition-colors border border-white/5"
+                       >
+                         <ChevronRight className="w-4 h-4" />
+                       </button>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -586,7 +718,9 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sessionData.countries.map((country: string) => {
+                      {sessionData.countries
+                        .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                        .map((country: string) => {
                         const myVotes = sessionData.votes[myParticipantId!] || {};
                         const currentVote = normalizeVote(myVotes[country]);
                         const isJokerMode = currentVote?.type === 'joker';
@@ -655,58 +789,6 @@ export default function App() {
                       })}
                     </tbody>
                   </table>
-                </div>
-
-                <div className="p-8 bg-slate-950/40 border-t border-white/5">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        <span>Mandatory Points ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
-                        <span>{Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {POINT_SCALE.map(pt => {
-                           const count = ballotStats.mandatory[pt] || 0;
-                           const isFullyUsed = count >= votingRules.sets;
-                           return (
-                            <div 
-                              key={pt} 
-                              className={`w-9 h-9 rounded-lg flex flex-col items-center justify-center transition-all border ${isFullyUsed ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-lg shadow-indigo-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}
-                            >
-                              <span className="text-[10px] font-black">{pt}</span>
-                              {votingRules.sets > 1 && (
-                                <div className="flex gap-0.5 mt-0.5">
-                                  {[...Array(votingRules.sets)].map((_, i) => (
-                                    <div key={i} className={`w-1 h-1 rounded-full ${i < count ? 'bg-indigo-400' : 'bg-slate-800'}`} />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                           );
-                        })}
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        <span>Joker Slots</span>
-                        <span className={ballotStats.jokerCount >= votingRules.jokerSlots ? 'text-amber-500' : ''}>
-                          {ballotStats.jokerCount} / {votingRules.jokerSlots} USED
-                        </span>
-                      </div>
-                      {votingRules.jokerSlots > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {[...Array(votingRules.jokerSlots)].map((_, i) => (
-                            <div key={i} className={`w-9 h-9 rounded-lg flex items-center justify-center border transition-all ${i < ballotStats.jokerCount ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-lg shadow-amber-500/10' : 'bg-slate-900 border-white/5 text-slate-700'}`}>
-                              <Star className={`w-4 h-4 ${i < ballotStats.jokerCount ? 'fill-amber-500' : ''}`} />
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[10px] text-slate-600 font-bold italic uppercase tracking-tighter">Add more than 10 countries to enable Jokers</p>
-                      )}
-                    </div>
-                  </div>
                 </div>
               </div>
             )}
