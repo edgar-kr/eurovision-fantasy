@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  background-image: url('https://i0.wp.com/thateurovisionsite.com/wp-content/uploads/logo.webp?w=1440&ssl=1');
+  background-image: url('/logo.webp');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
