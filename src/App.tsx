@@ -47,13 +47,13 @@ const normalizeVote = (v: any): Vote | null => {
 export default function App() {
   const { t, language, setLanguage } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
-  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'voted' | 'points12' | 'points1' | 'default' }[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'voted' | 'points12' | 'points1' | 'default' | 'locked' | 'unlocked' }[]>([]);
 
   const dismissToast = (id: number) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
 
-  const showToast = (message: string, type: 'voted' | 'points12' | 'points1' | 'default' = 'default') => {
+  const showToast = (message: string, type: 'voted' | 'points12' | 'points1' | 'default' | 'locked' | 'unlocked' = 'default') => {
     const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -156,6 +156,13 @@ export default function App() {
           }
           if (data.countries.length !== prev.countries.length) {
              showToast("The country list was updated.", 'default');
+          }
+          if (data.votingLocked !== prev.votingLocked) {
+             if (data.votingLocked) {
+                showToast("VOTING IS NOW LOCKED! 🚫", 'locked');
+             } else {
+                showToast("VOTING IS NOW UNLOCKED! 💜", 'unlocked');
+             }
           }
           data.countries.forEach(country => {
              Object.entries(data.votes).forEach(([pId, v]) => {
@@ -328,7 +335,7 @@ export default function App() {
   };
 
   const castVote = async (country: string, score: number, type: 'mandatory' | 'joker' = 'mandatory') => {
-    if (!myParticipantId || !sessionId || !sessionData) return;
+    if (!myParticipantId || !sessionId || !sessionData || sessionData.votingLocked) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     
     const currentBallot = { ...(sessionData.votes[myParticipantId] || {}) };
@@ -415,6 +422,12 @@ export default function App() {
     await updateDoc(docRef, { officialTop10: newList });
   };
 
+  const toggleVotingLock = async () => {
+    if (!sessionId || !isAdmin || !sessionData) return;
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    await updateDoc(docRef, { votingLocked: !sessionData.votingLocked });
+  };
+
   if (!sessionId) {
     return (
       <div className="min-h-screen text-white flex flex-col items-center justify-center p-6 space-y-8">
@@ -460,10 +473,22 @@ export default function App() {
             onClick={() => dismissToast(toast.id)}
             className={`
               bg-slate-900 border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2 pointer-events-auto cursor-pointer hover:bg-slate-800 transition-colors
-              ${toast.type === 'voted' ? 'border-green-500/50' : toast.type === 'points12' ? 'border-orange-500/50' : toast.type === 'points1' ? 'border-blue-500/50' : 'border-white/10'}
+              ${toast.type === 'voted' ? 'border-green-500/50' : 
+                toast.type === 'points12' ? 'border-orange-500/50' : 
+                toast.type === 'points1' ? 'border-blue-500/50' : 
+                toast.type === 'locked' ? 'border-red-500/50' :
+                toast.type === 'unlocked' ? 'border-purple-500/50' :
+                'border-white/10'}
             `}
           >
-            <div className={`w-2 h-2 rounded-full animate-pulse ${toast.type === 'voted' ? 'bg-green-500' : toast.type === 'points12' ? 'bg-orange-500' : toast.type === 'points1' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
+            <div className={`w-2 h-2 rounded-full animate-pulse 
+              ${toast.type === 'voted' ? 'bg-green-500' : 
+                toast.type === 'points12' ? 'bg-orange-500' : 
+                toast.type === 'points1' ? 'bg-blue-500' : 
+                toast.type === 'locked' ? 'bg-red-500' :
+                toast.type === 'unlocked' ? 'bg-purple-500' :
+                'bg-indigo-500'}`} 
+            />
             <span className="text-sm font-bold text-white">{toast.message}</span>
           </div>
         ))}
@@ -874,17 +899,31 @@ export default function App() {
                         {sessionData.participants.find((p) => p.id === myParticipantId)?.name.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="text-lg md:text-2xl font-black tracking-tight uppercase">{t('your_ballot')}</h3>
+                        <h3 className="text-lg md:text-2xl font-black tracking-tight uppercase flex items-center gap-3">
+                          {t('your_ballot')}
+                          {sessionData.votingLocked && <span className="text-[10px] bg-red-500/20 text-red-500 px-2 py-1 rounded-lg border border-red-500/20">LOCKED</span>}
+                        </h3>
                         <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Voting as {sessionData.participants.find((p) => p.id === myParticipantId)?.name}</p>
                       </div>
                     </div>
-                    <button 
-                      onClick={releaseSlot}
-                      className="group flex items-center gap-2 text-slate-500 hover:text-red-400 font-bold text-xs transition-all bg-slate-800/40 px-3 py-2 rounded-xl border border-white/5"
-                    >
-                      <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
-                      <span className="hidden xs:inline">{t('sign_out')}</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isAdmin && (
+                        <button 
+                          onClick={toggleVotingLock}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-all border ${sessionData.votingLocked ? 'bg-purple-500/10 border-purple-500/50 text-purple-400' : 'bg-red-500/10 border-red-500/50 text-red-400'}`}
+                        >
+                          {sessionData.votingLocked ? <RefreshCw className="w-4 h-4" /> : <LogOut className="w-4 h-4 rotate-90" />}
+                          <span>{sessionData.votingLocked ? 'UNFREEZE VOTING' : 'FREEZE VOTING'}</span>
+                        </button>
+                      )}
+                      <button 
+                        onClick={releaseSlot}
+                        className="group flex items-center gap-2 text-slate-500 hover:text-red-400 font-bold text-xs transition-all bg-slate-800/40 px-3 py-2 rounded-xl border border-white/5"
+                      >
+                        <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
+                        <span className="hidden xs:inline">{t('sign_out')}</span>
+                      </button>
+                    </div>
                   </div>
 
                   <div className="p-6 md:p-8 border-b border-white/5 bg-slate-950/10 space-y-6">
@@ -1022,10 +1061,12 @@ export default function App() {
                                       <button
                                         key={pt}
                                         onClick={() => castVote(country, pt, 'mandatory')}
+                                        disabled={sessionData.votingLocked}
                                         className={`
                                           w-10 h-10 rounded-xl text-sm font-black transition-all relative
                                           ${isSelected ? 'bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
                                             (isFullyUsed && !isSelected) ? 'bg-slate-800/30 text-slate-700 opacity-20 cursor-not-allowed' : 
+                                            sessionData.votingLocked ? 'bg-slate-800/30 text-slate-700 cursor-not-allowed' :
                                             'bg-slate-800/60 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 border border-white/5'}
                                         `}
                                       >
@@ -1045,7 +1086,7 @@ export default function App() {
                                   <select 
                                     value={isJokerMode ? currentVote.value : 0}
                                     onChange={(e) => castVote(country, parseInt(e.target.value), 'joker')}
-                                    disabled={!isJokerMode && ballotStats.jokerCount >= votingRules.jokerSlots}
+                                    disabled={sessionData.votingLocked || (!isJokerMode && ballotStats.jokerCount >= votingRules.jokerSlots)}
                                     className={`bg-slate-800/60 text-xs font-black p-2 rounded-lg border outline-none transition-all ${isJokerMode ? 'border-amber-500 text-amber-500' : 'border-white/5 text-slate-500 disabled:opacity-20'}`}
                                   >
                                     <option value="0">OFF</option>
@@ -1095,7 +1136,9 @@ export default function App() {
                               votingRules={votingRules}
                               usageCount={(score) => ballotStats.mandatory[score] || 0}
                               jokerSlotsAvailable={ballotStats.jokerCount < votingRules.jokerSlots}
-                            />
+                              votingLocked={sessionData.votingLocked}
+                              />
+
                           );
                         })
                     )}

@@ -20,5 +20,6 @@ export interface SessionData {
     };
   };
   officialTop10?: string[];
+  votingLocked?: boolean;
   createdAt: string;
 }
