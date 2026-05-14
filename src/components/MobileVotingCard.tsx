@@ -24,11 +24,29 @@ export default function MobileVotingCard({
   const isJokerMode = currentVote?.type === 'joker';
 
   return (
-    <div className="bg-slate-900/40 rounded-2xl p-4 border border-white/5 space-y-4">
-      <h4 className="font-black text-lg tracking-tight uppercase">{country}</h4>
+    <div className="bg-slate-900/60 rounded-3xl p-5 border border-white/5 space-y-5 shadow-xl">
+      <div className="flex items-center justify-between">
+        <h4 className="font-black text-xl tracking-tight uppercase text-white">{country}</h4>
+        {currentVote && currentVote.value > 0 && (
+          <div className="flex items-center gap-2">
+            <div className={`px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/20'}`}>
+              {isJokerMode && <Star className="w-3 h-3 fill-amber-500" />}
+              {currentVote.value} PTS
+            </div>
+            <button 
+              onClick={() => onCastVote(country, 0, 'mandatory')}
+              className="p-1.5 hover:bg-red-500/10 text-slate-500 hover:text-red-400 transition-colors rounded-lg"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+      </div>
       
-      <div className="space-y-2">
-        <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mandatory Points</label>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Mandatory Points</label>
+        </div>
         <div className="grid grid-cols-5 gap-2">
           {pointScale.map(pt => {
             const count = usageCount(pt);
@@ -40,13 +58,18 @@ export default function MobileVotingCard({
                 key={pt}
                 onClick={() => onCastVote(country, pt, 'mandatory')}
                 className={`
-                  h-10 rounded-xl text-sm font-black transition-all
-                  ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 
-                    (isFullyUsed && !isSelected) ? 'bg-slate-800/30 text-slate-700 opacity-20' : 
-                    'bg-slate-800/60 hover:bg-indigo-500/20 text-slate-400 border border-white/5'}
+                  h-11 rounded-xl text-sm font-black transition-all relative overflow-hidden
+                  ${isSelected ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
+                    (isFullyUsed && !isSelected) ? 'bg-slate-800/30 text-slate-700 opacity-20 cursor-not-allowed' : 
+                    'bg-slate-800/60 active:bg-indigo-500/30 text-slate-400 border border-white/5'}
                 `}
               >
                 {pt}
+                {votingRules.sets > 1 && !isSelected && !isFullyUsed && (
+                  <span className="absolute top-0 right-0 bg-slate-700 text-[7px] w-3 h-3 rounded-bl-lg flex items-center justify-center border-l border-b border-white/10 opacity-50">
+                    {votingRules.sets - count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -54,18 +77,26 @@ export default function MobileVotingCard({
       </div>
 
       {votingRules.jokerSlots > 0 && (
-        <div className="space-y-2 pt-2 border-t border-white/5">
-          <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-            <Star className="w-3 h-3" /> Joker
-          </label>
+        <div className="space-y-3 pt-4 border-t border-white/5">
+          <div className="flex items-center justify-between">
+            <label className="text-[10px] font-black text-amber-500/70 uppercase tracking-widest flex items-center gap-2">
+              <Star className="w-3 h-3 fill-amber-500/50" /> Joker Point
+            </label>
+            {!isJokerMode && !jokerSlotsAvailable && (
+              <span className="text-[8px] text-slate-600 font-bold uppercase">No slots left</span>
+            )}
+          </div>
           <div className="grid grid-cols-5 gap-2">
             {pointScale.map(pt => (
               <button
                 key={`joker-${pt}`}
                 onClick={() => onCastVote(country, pt, 'joker')}
+                disabled={!isJokerMode && !jokerSlotsAvailable}
                 className={`
-                  h-10 rounded-xl text-sm font-black transition-all border
-                  ${isJokerMode && currentVote?.value === pt ? 'bg-amber-500/20 border-amber-500/50 text-amber-500' : 'bg-slate-800/60 border-white/5 text-slate-500'}
+                  h-11 rounded-xl text-sm font-black transition-all border
+                  ${isJokerMode && currentVote?.value === pt ? 'bg-amber-500/20 border-amber-500/50 text-amber-500 shadow-lg shadow-amber-500/10' : 
+                    (!isJokerMode && !jokerSlotsAvailable) ? 'bg-slate-800/10 text-slate-800 border-transparent opacity-20' :
+                    'bg-slate-800/60 border-white/5 text-slate-500 active:bg-amber-500/20'}
                 `}
               >
                 {pt}

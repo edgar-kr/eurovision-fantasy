@@ -68,6 +68,8 @@ export default function App() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'ballot' | 'standings' | 'management'>('ballot');
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -100,6 +102,17 @@ export default function App() {
   const isAdmin = useMemo(() => {
     return user && sessionData?.adminId === user.uid;
   }, [user, sessionData]);
+
+  const filteredCountries = useMemo(() => {
+    if (!sessionData) return [];
+    return sessionData.countries.filter(c => 
+      c.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [sessionData, searchTerm]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, pageSize]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -264,6 +277,31 @@ export default function App() {
     setNewParticipant('');
   };
 
+  const adminReleaseSlot = async (pId: string) => {
+    if (!sessionId || !sessionData || !isAdmin) return;
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    const updatedParticipants = sessionData.participants.map((p) => 
+      p.id === pId ? { ...p, claimedBy: null } : p
+    );
+    await updateDoc(docRef, { participants: updatedParticipants });
+  };
+
+  const removeParticipant = async (pId: string) => {
+    if (!sessionId || !sessionData || !isAdmin) return;
+    if (!confirm(`Are you sure you want to remove this participant? All their votes will be lost.`)) return;
+    
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    const updatedParticipants = sessionData.participants.filter(p => p.id !== pId);
+    
+    const newVotes = { ...sessionData.votes };
+    delete newVotes[pId];
+
+    await updateDoc(docRef, {
+      participants: updatedParticipants,
+      votes: newVotes
+    });
+  };
+
   const claimSlot = async (pId: string) => {
     if (!sessionId || !user || !sessionData) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
@@ -423,42 +461,42 @@ export default function App() {
           <div className="flex items-center gap-2 md:gap-3">
             <button 
               onClick={() => setLanguage(language === 'en' ? 'ua' : 'en')}
-              className="bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-white/5 transition-all"
+              className="bg-slate-800/80 hover:bg-slate-700 w-10 h-10 md:w-auto md:px-3 md:py-2 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-white/5 transition-all flex items-center justify-center"
             >
               {language === 'en' ? 'UA' : 'EN'}
             </button>
             <button 
               onClick={copyInviteLink}
-              className={`flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${copied ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-slate-800/80 hover:bg-slate-700 border-white/5'}`}
+              className={`flex items-center justify-center gap-2 w-10 h-10 md:w-auto md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${copied ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-slate-800/80 hover:bg-slate-700 border-white/5'}`}
             >
-              {copied ? <Check className="w-3 h-3 md:w-4 md:h-4 text-green-400" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4" />}
-              <span>{copied ? t('link_copied') : t('copy_link')}</span>
+              {copied ? <Check className="w-4 h-4 text-green-400" /> : <Share2 className="w-4 h-4" />}
+              <span className="hidden md:inline">{copied ? t('link_copied') : t('copy_link')}</span>
             </button>
             <button 
-              onClick={() => setShowResults(!showResults)}
-              className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
+              onClick={() => {
+                setShowResults(!showResults);
+                if (!showResults) setMobileTab('standings');
+              }}
+              className={`w-10 h-10 md:w-auto md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
             >
-              <Trophy className="w-3 h-3 md:w-4 md:h-4" />
-              <span>{showResults ? t('close') : t('winner')}</span>
+              <Trophy className="w-4 h-4" />
+              <span className="hidden md:inline">{showResults ? t('close') : t('winner')}</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden pb-16 lg:pb-0">
         {/* Sidebar */}
         <aside 
           className={`
-            fixed inset-y-0 left-0 z-40 w-80 bg-slate-950/40 backdrop-blur-2xl border-r border-white/5 transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0
-            ${isSettingsOpen ? 'translate-x-0' : '-translate-x-full lg:hidden'}
+            fixed inset-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:translate-x-0 lg:flex w-full lg:w-80 border-r border-white/5 transform transition-transform duration-300 ease-in-out
+            ${mobileTab === 'management' ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
           <div className="h-full flex flex-col p-6 space-y-8 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between lg:hidden">
-              <h2 className="text-lg font-black tracking-tight">{t('management')}</h2>
-              <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-white/5 rounded-lg">
-                <ChevronLeft className="w-6 h-6" />
-              </button>
+              <h2 className="text-xl font-black tracking-tight uppercase text-indigo-400">{t('management')}</h2>
             </div>
 
             {isAdmin && (
@@ -512,22 +550,48 @@ export default function App() {
               </h3>
               <div className="space-y-2 mb-6">
                 {sessionData.participants.map((p: Participant) => (
-                  <div key={p.id} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl border border-transparent hover:border-indigo-500/30 transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
-                      <span className={`font-bold ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
+                  <div key={p.id} className="flex flex-col gap-2 bg-slate-800/40 p-3 rounded-2xl border border-transparent hover:border-indigo-500/30 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2 h-2 rounded-full ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
+                        <span className={`font-bold ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            {p.claimedBy && (
+                              <button 
+                                onClick={() => adminReleaseSlot(p.id)}
+                                title="Release Slot (Kick)"
+                                className="p-1.5 text-slate-500 hover:text-amber-500 transition-colors"
+                              >
+                                <LogOut className="w-4 h-4" />
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => removeParticipant(p.id)}
+                              title="Remove Participant"
+                              className="p-1.5 text-slate-500 hover:text-red-500 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+
+                        {!p.claimedBy && !myParticipantId ? (
+                          <button 
+                            disabled={!user}
+                            onClick={() => claimSlot(p.id)}
+                            className={`text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
+                          >
+                            {user ? t('join') : '...'}
+                          </button>
+                        ) : p.claimedBy === user?.uid && (
+                          <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg font-black uppercase">{t('you')}</span>
+                        )}
+                      </div>
                     </div>
-                    {!p.claimedBy && !myParticipantId ? (
-                      <button 
-                        disabled={!user}
-                        onClick={() => claimSlot(p.id)}
-                        className={`text-xs font-black tracking-wider uppercase px-4 py-2 rounded-xl shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
-                      >
-                        {user ? t('join') : '...'}
-                      </button>
-                    ) : p.claimedBy === user?.uid && (
-                      <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">{t('you')}</span>
-                    )}
                   </div>
                 ))}
               </div>
@@ -550,22 +614,11 @@ export default function App() {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-3 md:p-6 lg:p-8">
+        <main className={`flex-1 overflow-y-auto custom-scrollbar p-3 md:p-6 lg:p-8 ${mobileTab === 'management' ? 'hidden lg:block' : ''}`}>
           <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
             
-            {/* Mobile Sidebar Toggle */}
-            <button 
-              onClick={() => setIsSettingsOpen(true)}
-              className="lg:hidden w-full flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
-            >
-              <span className="flex items-center gap-3">
-                <Menu className="w-4 h-4 text-indigo-500" /> Management
-              </span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
             {/* Results Podium Overlay */}
-            {showResults && (
+            {(showResults || mobileTab === 'standings') && (
               <section className="bg-slate-950/40 backdrop-blur-3xl border border-indigo-500/30 rounded-[2rem] md:rounded-[2.5rem] p-4 md:p-8 lg:p-12 animate-in fade-in zoom-in duration-500 shadow-2xl relative overflow-hidden mb-12">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-50" />
                 
@@ -692,27 +745,27 @@ export default function App() {
             )}
 
             {/* Voting Matrix Panel */}
-            <div className="w-full">
+            <div className={`w-full ${mobileTab === 'standings' ? 'hidden lg:block' : ''}`}>
               {!myParticipantId ? (
-                <div className="bg-indigo-900/10 border-2 border-dashed border-indigo-500/20 rounded-[3rem] p-16 text-center h-full flex flex-col items-center justify-center space-y-6 backdrop-blur-sm">
+                <div className="bg-indigo-900/10 border-2 border-dashed border-indigo-500/20 rounded-[3rem] p-8 md:p-16 text-center h-full flex flex-col items-center justify-center space-y-6 backdrop-blur-sm">
                   <div className="bg-slate-900/50 p-6 rounded-3xl shadow-xl">
-                    <Users className="w-16 h-16 text-indigo-500 animate-bounce" />
+                    <Users className="w-12 h-12 md:w-16 md:h-16 text-indigo-500 animate-bounce" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">{t('ready_to_vote')}</h3>
-                    <p className="text-slate-500 max-w-sm mx-auto">{t('join_instructions')}</p>
+                    <h3 className="text-xl md:text-2xl font-black mb-2 uppercase tracking-tight">{t('ready_to_vote')}</h3>
+                    <p className="text-sm text-slate-500 max-w-sm mx-auto">{t('join_instructions')}</p>
                   </div>
                 </div>
               ) : (
                 <div className="bg-slate-950/30 rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl backdrop-blur-xl">
                   <div className="p-6 md:p-8 border-b border-white/5 bg-slate-900/40 flex items-center justify-between">
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20 uppercase text-white">
+                    <div className="flex items-center gap-4 md:gap-5">
+                      <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-2xl flex items-center justify-center font-black text-lg md:text-xl shadow-lg shadow-indigo-500/20 uppercase text-white">
                         {sessionData.participants.find((p) => p.id === myParticipantId)?.name.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">{t('your_ballot')}</h3>
-                        <p className="text-xs text-indigo-400 font-bold tracking-widest uppercase">Voting as {sessionData.participants.find((p) => p.id === myParticipantId)?.name}</p>
+                        <h3 className="text-lg md:text-2xl font-black tracking-tight uppercase">{t('your_ballot')}</h3>
+                        <p className="text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Voting as {sessionData.participants.find((p) => p.id === myParticipantId)?.name}</p>
                       </div>
                     </div>
                     <button 
@@ -729,7 +782,9 @@ export default function App() {
                       <div className="space-y-4">
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
                           <span>{t('mandatory_points')} ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
-                          <span>{Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED</span>
+                          <span className={Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0) >= votingRules.mandatorySlots ? 'text-green-500' : ''}>
+                            {Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED
+                          </span>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {POINT_SCALE.map(pt => {
@@ -775,22 +830,32 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Show</span>
-                        <select 
-                          value={pageSize}
-                          onChange={(e) => {
-                            setPageSize(parseInt(e.target.value));
-                            setCurrentPage(1);
-                          }}
-                          className="bg-slate-800/60 text-[10px] font-black p-1.5 rounded-lg border border-white/5 outline-none text-indigo-400"
-                        >
-                          <option value="10">10</option>
-                          <option value="20">20</option>
-                          <option value="999">ALL</option>
-                        </select>
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Countries</span>
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="relative flex-1 sm:w-64">
+                          <Music className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                          <input 
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Find country..."
+                            className="w-full bg-slate-800/40 border border-white/5 rounded-xl pl-10 pr-4 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Show</span>
+                          <select 
+                            value={pageSize}
+                            onChange={(e) => {
+                              setPageSize(parseInt(e.target.value));
+                              setCurrentPage(1);
+                            }}
+                            className="bg-slate-800/60 text-[10px] font-black p-1.5 rounded-lg border border-white/5 outline-none text-indigo-400"
+                          >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="999">ALL</option>
+                          </select>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-4">
@@ -801,9 +866,9 @@ export default function App() {
                          >
                            <ChevronLeft className="w-4 h-4" />
                          </button>
-                         <span className="text-[10px] font-black text-indigo-400 tracking-widest uppercase">Page {currentPage} of {Math.ceil(sessionData.countries.length / pageSize)}</span>
+                         <span className="text-[10px] font-black text-indigo-400 tracking-widest uppercase">Page {currentPage} of {Math.ceil(filteredCountries.length / pageSize) || 1}</span>
                          <button 
-                           disabled={currentPage >= Math.ceil(sessionData.countries.length / pageSize)}
+                           disabled={currentPage >= Math.ceil(filteredCountries.length / pageSize) || filteredCountries.length === 0}
                            onClick={() => setCurrentPage(prev => prev + 1)}
                            className="p-2 bg-slate-800/60 rounded-xl disabled:opacity-20 hover:text-indigo-400 transition-colors border border-white/5"
                          >
@@ -826,7 +891,7 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sessionData.countries
+                        {filteredCountries
                           .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                           .map((country: string) => {
                           const myVotes = sessionData.votes[myParticipantId!] || {};
@@ -900,25 +965,30 @@ export default function App() {
                   </div>
 
                   <div className="md:hidden space-y-4 p-4">
-                    {sessionData.countries
-                      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                      .map((country: string) => {
-                        const myVotes = sessionData.votes[myParticipantId!] || {};
-                        const currentVote = normalizeVote(myVotes[country]);
-                        return (
-                          <MobileVotingCard 
-                            key={country}
-                            country={country}
-                            currentVote={currentVote}
-                            pointScale={POINT_SCALE}
-                            onCastVote={castVote}
-                            votingRules={votingRules}
-                            usageCount={(score) => ballotStats.mandatory[score] || 0}
-                            jokerSlotsAvailable={ballotStats.jokerCount < votingRules.jokerSlots}
-                          />
-                        );
-                      })
-                    }
+                    {filteredCountries.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">No countries found matching "{searchTerm}"</p>
+                      </div>
+                    ) : (
+                      filteredCountries
+                        .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                        .map((country: string) => {
+                          const myVotes = sessionData.votes[myParticipantId!] || {};
+                          const currentVote = normalizeVote(myVotes[country]);
+                          return (
+                            <MobileVotingCard 
+                              key={country}
+                              country={country}
+                              currentVote={currentVote}
+                              pointScale={POINT_SCALE}
+                              onCastVote={castVote}
+                              votingRules={votingRules}
+                              usageCount={(score) => ballotStats.mandatory[score] || 0}
+                              jokerSlotsAvailable={ballotStats.jokerCount < votingRules.jokerSlots}
+                            />
+                          );
+                        })
+                    )}
                   </div>
                 </div>
               )}
@@ -926,6 +996,31 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      {/* Bottom Navigation for Mobile */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around p-2 z-[60] pb-safe">
+        <button 
+          onClick={() => setMobileTab('ballot')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'ballot' ? 'text-indigo-400' : 'text-slate-500'}`}
+        >
+          <ListOrdered className="w-6 h-6" />
+          <span className="text-[10px] font-black uppercase tracking-widest">{t('your_ballot')}</span>
+        </button>
+        <button 
+          onClick={() => setMobileTab('standings')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'standings' ? 'text-indigo-400' : 'text-slate-500'}`}
+        >
+          <Trophy className="w-6 h-6" />
+          <span className="text-[10px] font-black uppercase tracking-widest">{t('standings')}</span>
+        </button>
+        <button 
+          onClick={() => setMobileTab('management')}
+          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'management' ? 'text-indigo-400' : 'text-slate-500'}`}
+        >
+          <Users className="w-6 h-6" />
+          <span className="text-[10px] font-black uppercase tracking-widest">{t('management')}</span>
+        </button>
+      </nav>
     </div>
   );
 }
