@@ -562,7 +562,7 @@ export default function App() {
           className={`
             fixed inset-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:flex w-full border-r border-white/5 transform transition-all duration-300 ease-in-out
             ${mobileTab === 'management' ? 'translate-x-0' : '-translate-x-full'}
-            ${isSettingsOpen ? 'lg:w-80 lg:translate-x-0' : 'lg:w-0 lg:-translate-x-full overflow-hidden'}
+            ${isSettingsOpen ? 'lg:w-[450px] lg:translate-x-0' : 'lg:w-0 lg:-translate-x-full overflow-hidden'}
           `}
         >
           <div className="h-full flex flex-col p-6 space-y-8 overflow-y-auto custom-scrollbar">
@@ -583,9 +583,9 @@ export default function App() {
                 <div className="space-y-2 mb-6 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500/20">
                   {sessionData.countries.map((c: string, idx: number) => (
                     <div key={c} className="flex items-center justify-between bg-slate-800/40 px-4 py-2 rounded-xl group hover:bg-slate-800/60 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black text-slate-600 w-4">{idx + 1}</span>
-                        <span className="font-semibold text-sm">{c}</span>
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <span className="text-[10px] font-black text-slate-600 w-4 shrink-0">{idx + 1}</span>
+                        <span className="font-semibold text-sm truncate">{c}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <button onClick={() => moveCountry(idx, 'up')} disabled={idx === 0} className="text-slate-500 hover:text-indigo-400 disabled:opacity-10 p-1.5"><ChevronUp className="w-4 h-4" /></button>
@@ -622,10 +622,10 @@ export default function App() {
               <div className="space-y-2 mb-6">
                 {sessionData.participants.map((p: Participant) => (
                   <div key={p.id} className="flex flex-col gap-2 bg-slate-800/40 p-3 rounded-2xl border border-transparent hover:border-indigo-500/30 transition-all">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-2 h-2 rounded-full ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
-                        <span className={`font-bold ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
+                    <div className="flex items-center justify-between overflow-hidden gap-2">
+                      <div className="flex items-center gap-3 overflow-hidden">
+                        <div className={`w-2 h-2 rounded-full shrink-0 ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
+                        <span className={`font-bold truncate ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
                       </div>
                       
                       <div className="flex items-center gap-2">
