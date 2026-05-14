@@ -26,7 +26,8 @@ import {
   LayoutGrid,
   ListOrdered,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Menu
 } from 'lucide-react';
 import { db, auth, appId } from './firebase';
 import { SessionData, Participant, Vote } from './types';
@@ -53,6 +54,7 @@ export default function App() {
   const [resultsTab, setResultsTab] = useState<'overview' | 'advanced'>('overview');
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(true);
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -330,8 +332,8 @@ export default function App() {
       <header className="sticky top-0 z-50 bg-slate-950/80 backdrop-blur-xl border-b border-white/5 p-3 md:p-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 md:gap-4">
-            <div className="bg-indigo-600 p-2 md:p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-              <Music className="w-4 h-4 md:w-5 md:h-5 text-white" />
+            <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 md:p-2 rounded-xl shadow-lg flex items-center justify-center">
+              <span className="font-black text-white text-xs">E26</span>
             </div>
             <div>
               <h1 className="font-black tracking-tight text-lg md:text-xl">EURO PARTY</h1>
