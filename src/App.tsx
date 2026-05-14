@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from './i18n/context';
 import { 
   doc, 
   onSnapshot, 
@@ -43,6 +44,7 @@ const normalizeVote = (v: any): Vote | null => {
 };
 
 export default function App() {
+  const { t, language, setLanguage } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
@@ -356,9 +358,9 @@ export default function App() {
               <span className="font-black text-white text-xs">E26</span>
             </div>
             <div>
-              <h1 className="font-black tracking-tight text-lg md:text-xl">EURO PARTY</h1>
+              <h1 className="font-black tracking-tight text-lg md:text-xl">{t('title')}</h1>
               <div className="flex items-center gap-2">
-                <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold tracking-widest uppercase">Live Session: {sessionId}</p>
+                <p className="text-[9px] md:text-[10px] text-indigo-400 font-bold tracking-widest uppercase">{t('live_session')}: {sessionId}</p>
                 {isAdmin && (
                   <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded font-black uppercase tracking-tighter border border-amber-500/20">ADMIN</span>
                 )}
@@ -368,18 +370,24 @@ export default function App() {
           
           <div className="flex items-center gap-2 md:gap-3">
             <button 
+              onClick={() => setLanguage(language === 'en' ? 'ua' : 'en')}
+              className="bg-slate-800/80 hover:bg-slate-700 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-widest border border-white/5 transition-all"
+            >
+              {language === 'en' ? 'UA' : 'EN'}
+            </button>
+            <button 
               onClick={copyInviteLink}
               className={`flex items-center gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-bold transition-all border ${copied ? 'bg-green-500/10 border-green-500/50 text-green-400' : 'bg-slate-800/80 hover:bg-slate-700 border-white/5'}`}
             >
               {copied ? <Check className="w-3 h-3 md:w-4 md:h-4 text-green-400" /> : <Share2 className="w-3 h-3 md:w-4 md:h-4" />}
-              <span>{copied ? 'Link Copied!' : 'Copy Link'}</span>
+              <span>{copied ? t('link_copied') : t('copy_link')}</span>
             </button>
             <button 
               onClick={() => setShowResults(!showResults)}
               className={`px-3 md:px-5 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
             >
               <Trophy className="w-3 h-3 md:w-4 md:h-4" />
-              <span>{showResults ? 'CLOSE' : 'WINNER'}</span>
+              <span>{showResults ? t('close') : t('winner')}</span>
             </button>
           </div>
         </div>
@@ -395,7 +403,7 @@ export default function App() {
         >
           <div className="h-full flex flex-col p-6 space-y-8 overflow-y-auto custom-scrollbar">
             <div className="flex items-center justify-between lg:hidden">
-              <h2 className="text-lg font-black tracking-tight">MANAGEMENT</h2>
+              <h2 className="text-lg font-black tracking-tight">{t('management')}</h2>
               <button onClick={() => setIsSettingsOpen(false)} className="p-2 hover:bg-white/5 rounded-lg">
                 <ChevronLeft className="w-6 h-6" />
               </button>
@@ -405,7 +413,7 @@ export default function App() {
               <div className="bg-white/5 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
                   <span className="flex items-center gap-3">
-                    <Globe className="w-4 h-4 text-indigo-500" /> Nations
+                    <Globe className="w-4 h-4 text-indigo-500" /> {t('nations')}
                   </span>
                   <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
                     {sessionData.countries.length}
@@ -431,7 +439,7 @@ export default function App() {
                     value={newCountry}
                     onChange={(e) => setNewCountry(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addCountry()}
-                    placeholder="Add country..." 
+                    placeholder={t('add_country')}
                     className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
                   />
                   <button onClick={addCountry} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
@@ -444,7 +452,7 @@ export default function App() {
             <div className="bg-white/5 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
               <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
                 <span className="flex items-center gap-3">
-                  <Users className="w-4 h-4 text-indigo-500" /> Party Guests
+                  <Users className="w-4 h-4 text-indigo-500" /> {t('guests')}
                 </span>
                 <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
                   {sessionData.participants.length}
@@ -463,10 +471,10 @@ export default function App() {
                         onClick={() => claimSlot(p.id)}
                         className={`text-xs font-black tracking-wider uppercase px-4 py-2 rounded-xl shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
                       >
-                        {user ? 'JOIN' : '...'}
+                        {user ? t('join') : '...'}
                       </button>
                     ) : p.claimedBy === user?.uid && (
-                      <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">YOU</span>
+                      <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">{t('you')}</span>
                     )}
                   </div>
                 ))}
@@ -477,7 +485,7 @@ export default function App() {
                     value={newParticipant}
                     onChange={(e) => setNewParticipant(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
-                    placeholder="Friend's name..." 
+                    placeholder={t('friend_name')}
                     className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
                   />
                   <button onClick={addParticipant} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
@@ -512,7 +520,7 @@ export default function App() {
                 <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12">
                   <h2 className="text-2xl md:text-3xl font-black flex items-center gap-3 md:gap-4">
                     <Crown className="w-8 h-8 md:w-10 md:h-10 text-yellow-400" />
-                    STANDINGS
+                    {t('standings')}
                   </h2>
 
                   <div className="flex bg-slate-950/50 p-1 rounded-2xl border border-white/5">
@@ -520,13 +528,13 @@ export default function App() {
                       onClick={() => setResultsTab('overview')}
                       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${resultsTab === 'overview' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                      <ListOrdered className="w-4 h-4" /> OVERVIEW
+                      <ListOrdered className="w-4 h-4" /> {t('overview')}
                     </button>
                     <button 
                       onClick={() => setResultsTab('advanced')}
                       className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-xs font-black transition-all ${resultsTab === 'advanced' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}`}
                     >
-                      <LayoutGrid className="w-4 h-4" /> ADVANCED
+                      <LayoutGrid className="w-4 h-4" /> {t('advanced')}
                     </button>
                   </div>
                 </div>
@@ -538,7 +546,7 @@ export default function App() {
                         <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
                           <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
                           <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
-                          <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">pts</span></div>
+                          <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">{t('points')}</span></div>
                           {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
                         </div>
                       ))}
@@ -548,9 +556,9 @@ export default function App() {
                        <table className="w-full text-left border-collapse">
                          <thead>
                            <tr className="bg-slate-950/50">
-                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Rank</th>
-                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Country</th>
-                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Points</th>
+                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('rank')}</th>
+                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('country')}</th>
+                             <th className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">{t('points')}</th>
                            </tr>
                          </thead>
                          <tbody>
@@ -639,8 +647,8 @@ export default function App() {
                     <Users className="w-16 h-16 text-indigo-500 animate-bounce" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">READY TO VOTE?</h3>
-                    <p className="text-slate-500 max-w-sm mx-auto">Click "JOIN" on your name in the guest list to start assigning your Eurovision points!</p>
+                    <h3 className="text-2xl font-black mb-2 uppercase tracking-tight">{t('ready_to_vote')}</h3>
+                    <p className="text-slate-500 max-w-sm mx-auto">{t('join_instructions')}</p>
                   </div>
                 </div>
               ) : (
@@ -651,7 +659,7 @@ export default function App() {
                         {sessionData.participants.find((p) => p.id === myParticipantId)?.name.charAt(0)}
                       </div>
                       <div>
-                        <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">Your Ballot</h3>
+                        <h3 className="text-xl md:text-2xl font-black tracking-tight uppercase">{t('your_ballot')}</h3>
                         <p className="text-xs text-indigo-400 font-bold tracking-widest uppercase">Voting as {sessionData.participants.find((p) => p.id === myParticipantId)?.name}</p>
                       </div>
                     </div>
@@ -660,7 +668,7 @@ export default function App() {
                       className="group flex items-center gap-2 text-slate-500 hover:text-red-400 font-bold text-xs transition-all bg-slate-800/40 px-3 py-2 rounded-xl border border-white/5"
                     >
                       <LogOut className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> 
-                      <span className="hidden xs:inline">Sign Out</span>
+                      <span className="hidden xs:inline">{t('sign_out')}</span>
                     </button>
                   </div>
 
@@ -668,7 +676,7 @@ export default function App() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
                       <div className="space-y-4">
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                          <span>Mandatory Points ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
+                          <span>{t('mandatory_points')} ({votingRules.sets} set{votingRules.sets > 1 ? 's' : ''})</span>
                           <span>{Object.values(ballotStats.mandatory).reduce((a, b) => a + b, 0)} / {votingRules.mandatorySlots} USED</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
