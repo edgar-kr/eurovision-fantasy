@@ -501,88 +501,119 @@ export default function App() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Settings Panel */}
           <div className="space-y-6">
-            <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
-                <span className="flex items-center gap-3">
-                  <Globe className="w-4 h-4 text-indigo-500" /> Competing Nations
-                </span>
-                <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
-                  {sessionData.countries.length} TOTAL
-                </span>
-              </h3>
-              <div className="space-y-2 mb-6 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500/20">
-                {sessionData.countries.map((c: string) => (
-                  <div key={c} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl group hover:bg-slate-800/60 transition-colors">
-                    <span className="font-semibold">{c}</span>
-                    {isAdmin && (
-                      <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100 transition-all p-2">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {isAdmin && (
-                <div className="flex gap-2">
-                  <input 
-                    value={newCountry}
-                    onChange={(e) => setNewCountry(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addCountry()}
-                    placeholder="Add a country..." 
-                    className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                  />
-                  <button onClick={addCountry} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
-                    <Plus className="w-5 h-5" />
-                  </button>
-                </div>
-              )}
-            </div>
+            <button 
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className="w-full flex items-center justify-between bg-slate-900/50 p-4 rounded-2xl border border-white/5 text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
+            >
+              <span className="flex items-center gap-3">
+                <Menu className="w-4 h-4 text-indigo-500" /> {isAdmin ? 'Admin Panel' : 'Guests'}
+              </span>
+              {isSettingsOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
 
-            <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
-                <span className="flex items-center gap-3">
-                  <Users className="w-4 h-4 text-indigo-500" /> Party Guests
-                </span>
-                <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
-                  {sessionData.participants.length} TOTAL
-                </span>
-              </h3>
-              <div className="space-y-2 mb-6">
-                {sessionData.participants.map((p: Participant) => (
-                  <div key={p.id} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl border border-transparent hover:border-indigo-500/30 transition-all">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
-                      <span className={`font-bold ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
+            {isSettingsOpen && (
+              <div className="space-y-6 animate-in slide-in-from-top-4 duration-300">
+                {isAdmin && (
+                  <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
+                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
+                      <span className="flex items-center gap-3">
+                        <Globe className="w-4 h-4 text-indigo-500" /> Competing Nations
+                      </span>
+                      <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
+                        {sessionData.countries.length} TOTAL
+                      </span>
+                    </h3>
+                    <div className="space-y-2 mb-6 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500/20">
+                      {sessionData.countries.map((c: string, idx: number) => (
+                        <div key={c} className="flex items-center justify-between bg-slate-800/40 px-4 py-2 rounded-xl group hover:bg-slate-800/60 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-black text-slate-600 w-4">{idx + 1}</span>
+                            <span className="font-semibold text-sm">{c}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => moveCountry(idx, 'up')} 
+                              disabled={idx === 0}
+                              className="text-slate-500 hover:text-indigo-400 disabled:opacity-10 p-1.5"
+                            >
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => moveCountry(idx, 'down')} 
+                              disabled={idx === sessionData.countries.length - 1}
+                              className="text-slate-500 hover:text-indigo-400 disabled:opacity-10 p-1.5"
+                            >
+                              <ChevronDown className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => removeCountry(c)} className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all p-1.5 ml-1">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    {!p.claimedBy && !myParticipantId ? (
-                      <button 
-                        disabled={!user}
-                        onClick={() => claimSlot(p.id)}
-                        className={`text-xs font-black tracking-wider uppercase px-4 py-2 rounded-xl shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
-                      >
-                        {user ? 'JOIN' : '...'}
+                    <div className="flex gap-2">
+                      <input 
+                        value={newCountry}
+                        onChange={(e) => setNewCountry(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addCountry()}
+                        placeholder="Add a country..." 
+                        className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                      />
+                      <button onClick={addCountry} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
+                        <Plus className="w-5 h-5" />
                       </button>
-                    ) : p.claimedBy === user?.uid && (
-                      <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">YOU</span>
-                    )}
+                    </div>
                   </div>
-                ))}
-              </div>
-              {isAdmin && (
-                <div className="flex gap-2">
-                  <input 
-                    value={newParticipant}
-                    onChange={(e) => setNewParticipant(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
-                    placeholder="Friend's name..." 
-                    className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
-                  />
-                  <button onClick={addParticipant} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
-                    <Plus className="w-5 h-5" />
-                  </button>
+                )}
+
+                <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
+                  <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
+                    <span className="flex items-center gap-3">
+                      <Users className="w-4 h-4 text-indigo-500" /> Party Guests
+                    </span>
+                    <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
+                      {sessionData.participants.length} TOTAL
+                    </span>
+                  </h3>
+                  <div className="space-y-2 mb-6">
+                    {sessionData.participants.map((p: Participant) => (
+                      <div key={p.id} className="flex items-center justify-between bg-slate-800/40 px-4 py-3 rounded-xl border border-transparent hover:border-indigo-500/30 transition-all">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${p.claimedBy ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]' : 'bg-slate-600'}`} />
+                          <span className={`font-bold ${p.id === myParticipantId ? 'text-indigo-400' : ''}`}>{p.name}</span>
+                        </div>
+                        {!p.claimedBy && !myParticipantId ? (
+                          <button 
+                            disabled={!user}
+                            onClick={() => claimSlot(p.id)}
+                            className={`text-xs font-black tracking-wider uppercase px-4 py-2 rounded-xl shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
+                          >
+                            {user ? 'JOIN' : '...'}
+                          </button>
+                        ) : p.claimedBy === user?.uid && (
+                          <span className="text-xs bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg font-black uppercase">YOU</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      <input 
+                        value={newParticipant}
+                        onChange={(e) => setNewParticipant(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addParticipant()}
+                        placeholder="Friend's name..." 
+                        className="bg-slate-950 border border-white/10 rounded-xl px-4 py-3 flex-1 focus:ring-2 focus:ring-indigo-500 outline-none text-sm transition-all"
+                      />
+                      <button onClick={addParticipant} className="bg-indigo-600 hover:bg-indigo-500 p-3 rounded-xl shadow-lg shadow-indigo-500/20 transition-all active:scale-95">
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Voting Matrix Panel */}
