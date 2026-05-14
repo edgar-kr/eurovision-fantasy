@@ -474,8 +474,13 @@ export default function App() {
             </button>
             <button 
               onClick={() => {
-                setShowResults(!showResults);
-                if (!showResults) setMobileTab('standings');
+                const isOpening = !showResults;
+                setShowResults(isOpening);
+                if (isOpening) {
+                  setMobileTab('standings');
+                } else {
+                  setMobileTab('ballot');
+                }
               }}
               className={`w-10 h-10 md:w-auto md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
             >
@@ -1000,21 +1005,30 @@ export default function App() {
       {/* Bottom Navigation for Mobile */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-slate-950/80 backdrop-blur-xl border-t border-white/10 flex items-center justify-around p-2 z-[60] pb-safe">
         <button 
-          onClick={() => setMobileTab('ballot')}
+          onClick={() => {
+            setMobileTab('ballot');
+            setShowResults(false);
+          }}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'ballot' ? 'text-indigo-400' : 'text-slate-500'}`}
         >
           <ListOrdered className="w-6 h-6" />
           <span className="text-[10px] font-black uppercase tracking-widest">{t('your_ballot')}</span>
         </button>
         <button 
-          onClick={() => setMobileTab('standings')}
+          onClick={() => {
+            setMobileTab('standings');
+            setShowResults(true);
+          }}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'standings' ? 'text-indigo-400' : 'text-slate-500'}`}
         >
           <Trophy className="w-6 h-6" />
           <span className="text-[10px] font-black uppercase tracking-widest">{t('standings')}</span>
         </button>
         <button 
-          onClick={() => setMobileTab('management')}
+          onClick={() => {
+            setMobileTab('management');
+            setShowResults(false);
+          }}
           className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all ${mobileTab === 'management' ? 'text-indigo-400' : 'text-slate-500'}`}
         >
           <Users className="w-6 h-6" />
