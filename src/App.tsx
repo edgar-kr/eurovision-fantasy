@@ -9,7 +9,7 @@ import {
   arrayRemove 
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged, User } from 'firebase/auth';
-import { 
+import {
   Plus, 
   Trash2, 
   Trophy, 
@@ -30,6 +30,7 @@ import {
   ChevronRight,
   Menu
 } from 'lucide-react';
+import MobileVotingCard from './components/MobileVotingCard';
 import { db, auth, appId } from './firebase';
 import { SessionData, Participant, Vote } from './types';
 
@@ -812,16 +813,16 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-950/40">
-                          <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
-                          <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Rank</th>
+                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
+                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Rank</th>
                           {votingRules.jokerSlots > 0 && (
-                            <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Joker</th>
+                            <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Joker</th>
                           )}
-                          <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Total</th>
+                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Total</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -834,9 +835,9 @@ export default function App() {
 
                           return (
                             <tr key={country} className="border-b border-white/5 hover:bg-indigo-500/5 transition-all group">
-                              <td className="p-4 md:p-6 font-black text-base md:text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
-                              <td className="p-4 md:p-6">
-                                <div className="flex flex-wrap gap-1.5 md:gap-2">
+                              <td className="p-6 font-black text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
+                              <td className="p-6">
+                                <div className="flex flex-wrap gap-2">
                                   {POINT_SCALE.map(pt => {
                                     const usageCount = ballotStats.mandatory[pt] || 0;
                                     const isSelected = !isJokerMode && currentVote?.value === pt;
@@ -847,7 +848,7 @@ export default function App() {
                                         key={pt}
                                         onClick={() => castVote(country, pt, 'mandatory')}
                                         className={`
-                                          w-11 h-11 md:w-10 md:h-10 rounded-xl text-sm font-black transition-all relative
+                                          w-10 h-10 rounded-xl text-sm font-black transition-all relative
                                           ${isSelected ? 'bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
                                             (isFullyUsed && !isSelected) ? 'bg-slate-800/30 text-slate-700 opacity-20 cursor-not-allowed' : 
                                             'bg-slate-800/60 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 border border-white/5'}
@@ -865,7 +866,7 @@ export default function App() {
                                 </div>
                               </td>
                               {votingRules.jokerSlots > 0 && (
-                                <td className="p-4 md:p-6 text-center">
+                                <td className="p-6 text-center">
                                   <select 
                                     value={isJokerMode ? currentVote.value : 0}
                                     onChange={(e) => castVote(country, parseInt(e.target.value), 'joker')}
@@ -879,10 +880,10 @@ export default function App() {
                                   </select>
                                 </td>
                               )}
-                              <td className="p-4 md:p-6 text-center">
+                              <td className="p-6 text-center">
                                 {currentVote && currentVote.value > 0 ? (
                                   <div className="inline-flex flex-col items-center gap-1">
-                                    <span className={`px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-black shadow-inner flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
+                                    <span className={`px-4 py-1.5 rounded-full text-sm font-black shadow-inner flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
                                       {isJokerMode && <Star className="w-3 h-3 fill-amber-500" />}
                                       {currentVote.value}
                                     </span>
@@ -896,6 +897,28 @@ export default function App() {
                         })}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div className="md:hidden space-y-4 p-4">
+                    {sessionData.countries
+                      .slice((currentPage - 1) * pageSize, currentPage * pageSize)
+                      .map((country: string) => {
+                        const myVotes = sessionData.votes[myParticipantId!] || {};
+                        const currentVote = normalizeVote(myVotes[country]);
+                        return (
+                          <MobileVotingCard 
+                            key={country}
+                            country={country}
+                            currentVote={currentVote}
+                            pointScale={POINT_SCALE}
+                            onCastVote={castVote}
+                            votingRules={votingRules}
+                            usageCount={(score) => ballotStats.mandatory[score] || 0}
+                            jokerSlotsAvailable={ballotStats.jokerCount < votingRules.jokerSlots}
+                          />
+                        );
+                      })
+                    }
                   </div>
                 </div>
               )}
