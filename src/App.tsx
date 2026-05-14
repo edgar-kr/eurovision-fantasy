@@ -772,7 +772,7 @@ export default function App() {
                         <thead>
                           <tr className="bg-slate-950/50">
                             <th 
-                              className="sticky left-0 z-30 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5 min-w-[140px] md:min-w-0 cursor-pointer hover:text-indigo-400 transition-colors"
+                              className="md:sticky md:left-0 sticky top-0 z-50 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5 min-w-[120px] md:min-w-[140px] cursor-pointer hover:text-indigo-400 transition-colors"
                               onClick={() => setAdvancedSort(prev => ({ key: 'name', direction: prev.key === 'name' && prev.direction === 'asc' ? 'desc' : 'asc' }))}
                             >
                               <div className="flex items-center gap-2">
@@ -790,7 +790,7 @@ export default function App() {
                               const matchCount = userTop10.filter(name => targetList.includes(name)).length;
 
                               return (
-                                <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
+                                <th key={p.id} className="sticky top-0 z-40 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
                                   <div className="flex flex-col items-center gap-1">
                                     <span>{p.name}</span>
                                     <span className="bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/20">
@@ -801,7 +801,7 @@ export default function App() {
                               );
                             })}
                             <th 
-                              className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5 cursor-pointer hover:bg-indigo-500/10 transition-colors"
+                              className="sticky top-0 z-40 bg-slate-950 p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5 cursor-pointer hover:bg-indigo-500/10 transition-colors"
                               onClick={() => setAdvancedSort(prev => ({ key: 'score', direction: prev.key === 'score' && prev.direction === 'desc' ? 'asc' : 'desc' }))}
                             >
                               <div className="flex flex-col items-center gap-1">
@@ -840,7 +840,7 @@ export default function App() {
 
                             return (
                               <tr key={country} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${rowClass}`}>
-                                <td className={`sticky left-0 z-30 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${rowClass ? 'bg-slate-900' : 'bg-slate-950'} min-w-[140px] md:min-w-0`}>
+                                <td className={`md:sticky md:left-0 z-20 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${rowClass ? 'bg-slate-900' : 'bg-slate-950'} min-w-[120px] md:min-w-[140px]`}>
                                   {isAdmin ? (
                                     <button 
                                       onClick={() => toggleOfficialTop10(country)}
