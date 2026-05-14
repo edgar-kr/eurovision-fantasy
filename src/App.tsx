@@ -23,10 +23,17 @@ import {
   Star 
 } from 'lucide-react';
 import { db, auth, appId } from './firebase';
-import { SessionData, Participant } from './types';
+import { SessionData, Participant, Vote } from './types';
 
 // Standard Eurovision point scale
 const POINT_SCALE = [12, 10, 8, 7, 6, 5, 4, 3, 2, 1];
+
+// Helper to handle both old number format and new Vote object format
+const normalizeVote = (v: any): Vote | null => {
+  if (!v) return null;
+  if (typeof v === 'number') return { value: v, type: 'mandatory' };
+  return v as Vote;
+};
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -147,27 +154,29 @@ export default function App() {
     setMyParticipantId(pId);
   };
 
-  const castVote = async (country: string, score: number) => {
+  const castVote = async (country: string, score: number, type: 'mandatory' | 'joker' = 'mandatory') => {
     if (!myParticipantId || !sessionId || !sessionData) return;
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     
-    const currentVotes = { ...(sessionData.votes[myParticipantId] || {}) };
+    const currentBallot = { ...(sessionData.votes[myParticipantId] || {}) };
     
-    // Rule: Each vote (1-12) can be used only once.
-    // If this score was already used elsewhere, clear that country's vote.
-    Object.keys(currentVotes).forEach(key => {
-      if (currentVotes[key] === score) delete currentVotes[key];
-    });
+    // Clear any existing vote for this country
+    delete currentBallot[country];
 
-    // Update with new score
-    if (score === 0) {
-      delete currentVotes[country];
-    } else {
-      currentVotes[country] = score;
+    if (score > 0) {
+      if (type === 'mandatory') {
+        // Rule: Each mandatory vote (1-12) can be used only once.
+        // If this score was already used elsewhere as mandatory, clear it.
+        Object.keys(currentBallot).forEach(key => {
+          const v = normalizeVote(currentBallot[key]);
+          if (v?.type === 'mandatory' && v.value === score) delete currentBallot[key];
+        });
+      }
+      currentBallot[country] = { value: score, type };
     }
 
     await updateDoc(docRef, {
-      [`votes.${myParticipantId}`]: currentVotes
+      [`votes.${myParticipantId}`]: currentBallot
     });
   };
 
@@ -177,9 +186,10 @@ export default function App() {
     sessionData.countries.forEach(c => totals[c] = 0);
 
     Object.values(sessionData.votes).forEach((userVotes) => {
-      Object.entries(userVotes).forEach(([country, score]) => {
-        if (totals[country] !== undefined) {
-          totals[country] += score;
+      Object.entries(userVotes).forEach(([country, vote]) => {
+        const v = normalizeVote(vote);
+        if (v && totals[country] !== undefined) {
+          totals[country] += v.value;
         }
       });
     });
@@ -301,8 +311,13 @@ export default function App() {
           {/* Settings Panel */}
           <div className="space-y-6">
             <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                <Globe className="w-4 h-4 text-indigo-500" /> Competing Nations
+              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
+                <span className="flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-indigo-500" /> Competing Nations
+                </span>
+                <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
+                  {sessionData.countries.length} TOTAL
+                </span>
               </h3>
               <div className="space-y-2 mb-6 max-h-64 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-indigo-500/20">
                 {sessionData.countries.map((c: string) => (
@@ -333,8 +348,13 @@ export default function App() {
             </div>
 
             <div className="bg-slate-900/50 rounded-3xl border border-white/5 p-6 backdrop-blur-sm">
-              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-                <Users className="w-4 h-4 text-indigo-500" /> Party Guests
+              <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center justify-between">
+                <span className="flex items-center gap-3">
+                  <Users className="w-4 h-4 text-indigo-500" /> Party Guests
+                </span>
+                <span className="bg-slate-800 text-indigo-400 px-2 py-1 rounded-lg text-[10px] font-bold">
+                  {sessionData.participants.length} TOTAL
+                </span>
               </h3>
               <div className="space-y-2 mb-6">
                 {sessionData.participants.map((p: Participant) => (
@@ -411,14 +431,18 @@ export default function App() {
                     <thead>
                       <tr className="bg-slate-950/50">
                         <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
-                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Points Assignment</th>
+                        <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Points</th>
+                        {sessionData.countries.length > 10 && (
+                          <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Joker</th>
+                        )}
                         <th className="p-4 md:p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Score</th>
                       </tr>
                     </thead>
                     <tbody>
                       {sessionData.countries.map((country: string) => {
                         const myVotes = sessionData.votes[myParticipantId!] || {};
-                        const currentScore = myVotes[country] || 0;
+                        const currentVote = normalizeVote(myVotes[country]);
+                        const isJokerMode = currentVote?.type === 'joker';
 
                         return (
                           <tr key={country} className="border-b border-white/5 hover:bg-indigo-500/5 transition-all group">
@@ -426,17 +450,20 @@ export default function App() {
                             <td className="p-4 md:p-6">
                               <div className="flex flex-wrap gap-1.5 md:gap-2">
                                 {POINT_SCALE.map(pt => {
-                                  const isUsed = Object.values(myVotes).includes(pt);
-                                  const isSelected = currentScore === pt;
+                                  const isUsedMandatory = Object.values(myVotes).some(v => {
+                                    const nv = normalizeVote(v);
+                                    return nv?.type === 'mandatory' && nv.value === pt;
+                                  });
+                                  const isSelected = !isJokerMode && currentVote?.value === pt;
                                   
                                   return (
                                     <button
                                       key={pt}
-                                      onClick={() => castVote(country, isSelected ? 0 : pt)}
+                                      onClick={() => castVote(country, isSelected ? 0 : pt, 'mandatory')}
                                       className={`
                                         w-11 h-11 md:w-10 md:h-10 rounded-xl text-sm font-black transition-all
                                         ${isSelected ? 'bg-indigo-600 text-white scale-110 shadow-lg shadow-indigo-500/40 ring-2 ring-white/20' : 
-                                          isUsed ? 'bg-slate-800/50 text-slate-700 opacity-30 cursor-not-allowed' : 
+                                          (isUsedMandatory && !isSelected) ? 'bg-slate-800/50 text-slate-700 opacity-30 cursor-not-allowed' : 
                                           'bg-slate-800 hover:bg-indigo-500/20 text-slate-400 hover:text-indigo-300 border border-white/5'}
                                       `}
                                     >
@@ -446,12 +473,28 @@ export default function App() {
                                 })}
                               </div>
                             </td>
+                            {sessionData.countries.length > 10 && (
+                              <td className="p-4 md:p-6 text-center">
+                                <select 
+                                  value={isJokerMode ? currentVote.value : 0}
+                                  onChange={(e) => castVote(country, parseInt(e.target.value), 'joker')}
+                                  className={`bg-slate-800 text-xs font-black p-2 rounded-lg border outline-none transition-all ${isJokerMode ? 'border-amber-500 text-amber-500' : 'border-white/5 text-slate-500'}`}
+                                >
+                                  <option value="0">NO JOKER</option>
+                                  {POINT_SCALE.map(pt => (
+                                    <option key={pt} value={pt}>{pt} PTS</option>
+                                  ))}
+                                </select>
+                              </td>
+                            )}
                             <td className="p-4 md:p-6 text-center">
-                              {currentScore > 0 ? (
-                                <div className="inline-flex flex-col items-center">
-                                  <span className="bg-indigo-500/20 text-indigo-400 px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-black shadow-inner">
-                                    {currentScore} PTS
+                              {currentVote && currentVote.value > 0 ? (
+                                <div className="inline-flex flex-col items-center gap-1">
+                                  <span className={`px-3 md:px-4 py-1.5 rounded-full text-xs md:text-sm font-black shadow-inner flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500' : 'bg-indigo-500/20 text-indigo-400'}`}>
+                                    {isJokerMode && <Star className="w-3 h-3 fill-amber-500" />}
+                                    {currentVote.value} PTS
                                   </span>
+                                  <span className="text-[8px] font-black uppercase opacity-40">{isJokerMode ? 'Joker' : 'Rank'}</span>
                                 </div>
                               ) : (
                                 <span className="text-slate-700 text-sm font-bold tracking-widest">—</span>
@@ -466,20 +509,37 @@ export default function App() {
 
                 <div className="p-8 bg-slate-950/40 border-t border-white/5">
                   <div className="flex flex-wrap items-center gap-6 text-xs font-bold uppercase tracking-widest text-slate-500">
-                    <div className="flex gap-2">
-                      {POINT_SCALE.map(pt => (
-                        <div 
-                          key={pt} 
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border transition-all ${Object.values(sessionData.votes[myParticipantId!] || {}).includes(pt) ? 'bg-green-500/10 border-green-500/40 text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.1)]' : 'bg-slate-900 border-white/5 text-slate-700'}`}
-                        >
-                          {pt}
-                        </div>
-                      ))}
+                    <div className="flex flex-col gap-3">
+                      <span className="text-[10px] opacity-50">Mandatory Points Used:</span>
+                      <div className="flex gap-2">
+                        {POINT_SCALE.map(pt => {
+                           const isUsed = Object.values(sessionData.votes[myParticipantId!] || {}).some(v => {
+                             const nv = normalizeVote(v);
+                             return nv?.type === 'mandatory' && nv.value === pt;
+                           });
+                           return (
+                            <div 
+                              key={pt} 
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-black border transition-all ${isUsed ? 'bg-indigo-500/10 border-indigo-500/40 text-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.1)]' : 'bg-slate-900 border-white/5 text-slate-700'}`}
+                            >
+                              {pt}
+                            </div>
+                           );
+                        })}
+                      </div>
                     </div>
-                    <span className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                      Assign each point value exactly once
-                    </span>
+                    <div className="flex flex-col gap-2">
+                      <span className="flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                        Standard: Use each point exactly once
+                      </span>
+                      {sessionData.countries.length > 10 && (
+                        <span className="flex items-center gap-2 text-amber-500/70">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          Joker: Extra points (can be reused)
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

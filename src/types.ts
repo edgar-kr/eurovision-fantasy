@@ -4,6 +4,11 @@ export interface Participant {
   claimedBy: string | null;
 }
 
+export interface Vote {
+  value: number;
+  type: 'mandatory' | 'joker';
+}
+
 export interface SessionData {
   id: string;
   adminId?: string;
@@ -11,7 +16,7 @@ export interface SessionData {
   participants: Participant[];
   votes: {
     [participantId: string]: {
-      [countryName: string]: number;
+      [countryName: string]: number | Vote;
     };
   };
   createdAt: string;
