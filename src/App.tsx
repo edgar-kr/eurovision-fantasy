@@ -740,7 +740,7 @@ export default function App() {
                       <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
                           <tr className="bg-slate-950/50">
-                            <th className="sticky left-0 z-20 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5">Country</th>
+                            <th className="sticky left-0 z-30 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5 min-w-[140px] md:min-w-0">Country</th>
                             {sessionData.participants.map(p => {
                               const userVotes = sessionData.votes[p.id] || {};
                               const userTop10 = Object.entries(userVotes)
@@ -787,7 +787,7 @@ export default function App() {
 
                             return (
                               <tr key={country} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${rowClass}`}>
-                                <td className={`sticky left-0 z-10 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${rowClass ? 'bg-slate-900/90' : 'bg-slate-900/60'}`}>
+                                <td className={`sticky left-0 z-30 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${rowClass ? 'bg-slate-900' : 'bg-slate-950'} min-w-[140px] md:min-w-0`}>
                                   {isAdmin ? (
                                     <button 
                                       onClick={() => toggleOfficialTop10(country)}
