@@ -1099,6 +1099,50 @@ export default function App() {
                           );
                         })
                     )}
+                    {/* Duplicate Pagination at Bottom */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-6 border-t border-white/5">
+                      <div className="flex items-center gap-4 w-full sm:w-auto">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Show</span>
+                          <select 
+                            value={pageSize}
+                            onChange={(e) => {
+                              setPageSize(parseInt(e.target.value));
+                              setCurrentPage(1);
+                            }}
+                            className="bg-slate-800/60 text-[10px] font-black p-1.5 rounded-lg border border-white/5 outline-none text-indigo-400"
+                          >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="999">ALL</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                         <button 
+                           disabled={currentPage === 1}
+                           onClick={() => {
+                             setCurrentPage(prev => prev - 1);
+                             window.scrollTo({ top: 0, behavior: 'smooth' });
+                           }}
+                           className="p-2 bg-slate-800/60 rounded-xl disabled:opacity-20 hover:text-indigo-400 transition-colors border border-white/5"
+                         >
+                           <ChevronLeft className="w-4 h-4" />
+                         </button>
+                         <span className="text-[10px] font-black text-indigo-400 tracking-widest uppercase">Page {currentPage} of {Math.ceil(filteredCountries.length / pageSize) || 1}</span>
+                         <button 
+                           disabled={currentPage >= Math.ceil(filteredCountries.length / pageSize) || filteredCountries.length === 0}
+                           onClick={() => {
+                             setCurrentPage(prev => prev + 1);
+                             window.scrollTo({ top: 0, behavior: 'smooth' });
+                           }}
+                           className="p-2 bg-slate-800/60 rounded-xl disabled:opacity-20 hover:text-indigo-400 transition-colors border border-white/5"
+                         >
+                           <ChevronRight className="w-4 h-4" />
+                         </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
