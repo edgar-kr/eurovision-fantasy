@@ -49,12 +49,16 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [toasts, setToasts] = useState<{ id: number; message: string; type: 'voted' | 'points12' | 'points1' | 'default' }[]>([]);
 
+  const dismissToast = (id: number) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
   const showToast = (message: string, type: 'voted' | 'points12' | 'points1' | 'default' = 'default') => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 10000);
+      dismissToast(id);
+    }, 5000);
   };
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [sessionData, setSessionData] = useState<SessionData | null>(null);
@@ -184,7 +188,7 @@ export default function App() {
         const initialData: SessionData = {
           id: sessionId,
           adminId: user.uid,
-          countries: ["Bulgaria", "Azerbaijan", "Romania", "Luxembourg", "Czechia", "France", "Armenia", "Switzerland", "Cyprus", "Austria", "Latvia", "Denmark", "Australia", "Ukraine", "United Kingdom", "Albania", "Malta", "Norway"],
+          countries: ["Bulgaria", "Azerbaijan", "Romania", "Luxembourg", "Czechia", "France", "Armenia", "Switzerland", "Cyprus", "Austria", "Latvia", "Denmark", "Australia", "Ukraine", "United Kingdom"],
           participants: [],
           votes: {}, // { [participantId]: { [countryName]: score } }
           createdAt: new Date().toISOString()
@@ -450,10 +454,14 @@ export default function App() {
       {/* Toasts */}
       <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map(toast => (
-          <div key={toast.id} className={`
-            bg-slate-900 border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2 pointer-events-auto
-            ${toast.type === 'voted' ? 'border-green-500/50' : toast.type === 'points12' ? 'border-orange-500/50' : toast.type === 'points1' ? 'border-blue-500/50' : 'border-white/10'}
-          `}>
+          <div 
+            key={toast.id} 
+            onClick={() => dismissToast(toast.id)}
+            className={`
+              bg-slate-900 border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2 pointer-events-auto cursor-pointer hover:bg-slate-800 transition-colors
+              ${toast.type === 'voted' ? 'border-green-500/50' : toast.type === 'points12' ? 'border-orange-500/50' : toast.type === 'points1' ? 'border-blue-500/50' : 'border-white/10'}
+            `}
+          >
             <div className={`w-2 h-2 rounded-full animate-pulse ${toast.type === 'voted' ? 'bg-green-500' : toast.type === 'points12' ? 'bg-orange-500' : toast.type === 'points1' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
             <span className="text-sm font-bold text-white">{toast.message}</span>
           </div>
@@ -464,8 +472,13 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 md:gap-4">
             <button 
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors lg:flex hidden items-center justify-center text-indigo-400"
+              onClick={() => {
+                setIsSettingsOpen(!isSettingsOpen);
+                if (window.innerWidth < 1024) {
+                  setMobileTab(mobileTab === 'management' ? 'ballot' : 'management');
+                }
+              }}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center text-indigo-400"
               title={isSettingsOpen ? "Hide Sidebar" : "Show Sidebar"}
             >
               <Menu className="w-6 h-6" />
@@ -521,8 +534,9 @@ export default function App() {
         {/* Sidebar */}
         <aside 
           className={`
-            fixed inset-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:translate-x-0 lg:flex w-full lg:w-80 border-r border-white/5 transform transition-transform duration-300 ease-in-out
-            ${mobileTab === 'management' ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+            fixed inset-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:flex w-full border-r border-white/5 transform transition-all duration-300 ease-in-out
+            ${mobileTab === 'management' ? 'translate-x-0' : '-translate-x-full'}
+            ${isSettingsOpen ? 'lg:w-80 lg:translate-x-0' : 'lg:w-0 lg:-translate-x-full overflow-hidden'}
           `}
         >
           <div className="h-full flex flex-col p-6 space-y-8 overflow-y-auto custom-scrollbar">
