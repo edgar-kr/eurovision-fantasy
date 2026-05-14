@@ -382,7 +382,33 @@ export default function App() {
       .sort((a, b) => b.score - a.score);
   }, [sessionData]);
 
-  const globalTop10 = useMemo(() => results.slice(0, 10).map(r => r.name), [results]);
+  const globalTop10 = useMemo(() => {
+    return sessionData?.officialTop10 || [];
+  }, [sessionData?.officialTop10]);
+
+  const aggregateTop10 = useMemo(() => {
+    return results.slice(0, 10).map(r => r.name);
+  }, [results]);
+
+  const toggleOfficialTop10 = async (country: string) => {
+    if (!sessionId || !isAdmin || !sessionData) return;
+    const current = sessionData.officialTop10 || [];
+    const isSelected = current.includes(country);
+    
+    let newList;
+    if (isSelected) {
+      newList = current.filter(c => c !== country);
+    } else {
+      if (current.length >= 10) {
+        alert("You can only select up to 10 countries for the official Top 10!");
+        return;
+      }
+      newList = [...current, country];
+    }
+
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+    await updateDoc(docRef, { officialTop10: newList });
+  };
 
   if (!sessionId) {
     return (
@@ -651,16 +677,26 @@ export default function App() {
 
                 {resultsTab === 'overview' ? (
                   <div className="space-y-12">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-                      {results.slice(0, 3).map((res, idx) => (
-                        <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
-                          <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
-                          <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
-                          <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">{t('points')}</span></div>
-                          {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
-                        </div>
-                      ))}
-                    </div>
+                    {globalTop10.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+                        {globalTop10.slice(0, 3).map((name, idx) => {
+                          const res = results.find(r => r.name === name) || { name, score: 0 };
+                          return (
+                            <div key={res.name} className={`relative p-6 md:p-8 rounded-3xl border transition-all duration-700 ${idx === 0 ? 'bg-yellow-500/10 border-yellow-500/50 md:scale-110 shadow-[0_0_50px_rgba(234,179,8,0.15)] order-1 md:order-2' : idx === 1 ? 'bg-slate-400/10 border-slate-400/30 order-2 md:order-1 md:mt-8' : 'bg-orange-700/10 border-orange-700/30 order-3 md:mt-12'}`}>
+                              <div className="text-4xl md:text-5xl mb-3 md:mb-4">{idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}</div>
+                              <div className="text-xl md:text-2xl font-black uppercase tracking-tighter mb-1 md:mb-2">{res.name}</div>
+                              <div className="text-3xl md:text-4xl font-black text-indigo-400">{res.score} <span className="text-xs md:text-sm font-bold text-slate-500 uppercase">{t('points')}</span></div>
+                              {idx === 0 && <Star className="absolute -top-2 -right-2 md:-top-3 md:-right-3 w-6 h-6 md:w-8 md:h-8 text-yellow-400 fill-yellow-400 animate-spin-slow" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-center py-12 bg-slate-900/40 rounded-3xl border border-dashed border-white/10">
+                        <Crown className="w-12 h-12 text-slate-700 mx-auto mb-4" />
+                        <p className="text-slate-500 font-bold uppercase tracking-widest">Waiting for official results...</p>
+                      </div>
+                    )}
                     
                     <div className="max-w-2xl mx-auto overflow-hidden rounded-2xl border border-white/5 bg-slate-900/40">
                        <table className="w-full text-left border-collapse">
@@ -672,10 +708,13 @@ export default function App() {
                            </tr>
                          </thead>
                          <tbody>
-                           {results.slice(0, 10).map((res, idx) => (
+                           {(globalTop10.length > 0 ? results.filter(r => globalTop10.includes(r.name)) : results.slice(0, 10)).map((res, idx) => (
                              <tr key={res.name} className="border-t border-white/5 hover:bg-white/5 transition-colors">
                                <td className="p-4 font-black text-slate-500">#{idx + 1}</td>
-                               <td className="p-4 font-bold uppercase tracking-tight">{res.name}</td>
+                               <td className="p-4 font-bold uppercase tracking-tight flex items-center gap-2">
+                                 {res.name}
+                                 {globalTop10.includes(res.name) && <Check className="w-3 h-3 text-green-500" />}
+                               </td>
                                <td className="p-4 font-black text-indigo-400 text-right">{res.score} PTS</td>
                              </tr>
                            ))}
@@ -684,66 +723,104 @@ export default function App() {
                     </div>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-3xl border border-white/5 bg-slate-900/40">
-                    <table className="w-full text-left border-collapse min-w-[800px]">
-                      <thead>
-                        <tr className="bg-slate-950/50">
-                          <th className="sticky left-0 z-20 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5">Country</th>
-                          {sessionData.participants.map(p => {
-                            const userVotes = sessionData.votes[p.id] || {};
-                            const userTop10 = Object.entries(userVotes)
-                              .map(([name, v]) => ({ name, value: normalizeVote(v)?.value || 0 }))
-                              .sort((a,b) => b.value - a.value)
-                              .slice(0, 10)
-                              .map(v => v.name);
-                            const matchCount = userTop10.filter(name => globalTop10.includes(name)).length;
+                  <div className="space-y-6">
+                    {isAdmin && (
+                      <div className="bg-indigo-600/10 border border-indigo-500/20 p-4 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Crown className="w-5 h-5 text-amber-500" />
+                          <span className="text-xs font-black uppercase tracking-widest">Official Top 10 Selection</span>
+                        </div>
+                        <span className={`text-sm font-black ${globalTop10.length === 10 ? 'text-green-500' : 'text-indigo-400'}`}>
+                          {globalTop10.length} / 10 SELECTED
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="overflow-x-auto rounded-3xl border border-white/5 bg-slate-900/40">
+                      <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                          <tr className="bg-slate-950/50">
+                            <th className="sticky left-0 z-20 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-r border-white/5">Country</th>
+                            {sessionData.participants.map(p => {
+                              const userVotes = sessionData.votes[p.id] || {};
+                              const userTop10 = Object.entries(userVotes)
+                                .map(([name, v]) => ({ name, value: normalizeVote(v)?.value || 0 }))
+                                .sort((a,b) => b.value - a.value)
+                                .slice(0, 10)
+                                .map(v => v.name);
+                              const targetList = globalTop10.length > 0 ? globalTop10 : aggregateTop10;
+                              const matchCount = userTop10.filter(name => targetList.includes(name)).length;
+
+                              return (
+                                <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
+                                  <div className="flex flex-col items-center gap-1">
+                                    <span>{p.name}</span>
+                                    <span className="bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/20">
+                                      <Check className="w-2 h-2" /> {matchCount}/10 MATCH
+                                    </span>
+                                  </div>
+                                </th>
+                              );
+                            })}
+                            <th className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5">TOTAL</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sessionData.countries.map(country => {
+                            const total = results.find(r => r.name === country)?.score || 0;
+                            const isOfficial = globalTop10.includes(country);
+                            const isAggregateTop10 = aggregateTop10.includes(country);
+                            const globalRank = results.findIndex(r => r.name === country) + 1;
+
+                            // Color logic:
+                            // Green: Official + Aggregate Top 10
+                            // Orange: Aggregate Top 10 (User consensus) only
+                            let rowClass = '';
+                            let badgeColor = 'text-indigo-400';
+                            if (isOfficial && isAggregateTop10) {
+                              rowClass = 'bg-green-500/[0.05]';
+                              badgeColor = 'text-green-500';
+                            } else if (isAggregateTop10) {
+                              rowClass = 'bg-amber-500/[0.05]';
+                              badgeColor = 'text-amber-500';
+                            }
 
                             return (
-                              <th key={p.id} className="p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
-                                <div className="flex flex-col items-center gap-1">
-                                  <span>{p.name}</span>
-                                  <span className="bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/20">
-                                    <Check className="w-2 h-2" /> {matchCount}/10 MATCH
-                                  </span>
-                                </div>
-                              </th>
+                              <tr key={country} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${rowClass}`}>
+                                <td className={`sticky left-0 z-10 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${rowClass ? 'bg-slate-900/90' : 'bg-slate-900/60'}`}>
+                                  {isAdmin ? (
+                                    <button 
+                                      onClick={() => toggleOfficialTop10(country)}
+                                      className={`p-1 rounded transition-all ${isOfficial ? 'text-amber-500 scale-110' : 'text-slate-600 hover:text-slate-400'}`}
+                                    >
+                                      <Crown className={`w-4 h-4 ${isOfficial ? 'fill-amber-500/20' : ''}`} />
+                                    </button>
+                                  ) : (
+                                    isOfficial && <Crown className="w-3 h-3 text-amber-500 shrink-0" />
+                                  )}
+                                  <span className={`flex-1 truncate ${isOfficial ? 'text-amber-200' : ''}`}>{country}</span>
+                                  <span className="text-[8px] font-black opacity-40">#{globalRank}</span>
+                                </td>
+                                {sessionData.participants.map(p => {
+                                  const vote = normalizeVote(sessionData.votes[p.id]?.[country]);
+                                  const userVotes = Object.values(sessionData.votes[p.id] || {});
+                                  const sortedValues = userVotes.map(v => normalizeVote(v)?.value || 0).sort((a,b) => b-a);
+                                  const topThreshold = sortedValues[9] || 0;
+                                  const isTop = vote && vote.value > 0 && vote.value >= topThreshold;
+
+                                  return (
+                                    <td key={p.id} className={`p-4 text-center text-sm font-black transition-all ${isTop ? 'bg-indigo-600/20 text-indigo-300 ring-1 ring-inset ring-indigo-500/30' : 'text-slate-600'}`}>
+                                      {vote?.value || '—'}
+                                    </td>
+                                  );
+                                })}
+                                <td className={`p-4 text-center font-black bg-indigo-500/5 ${badgeColor}`}>{total}</td>
+                              </tr>
                             );
                           })}
-                          <th className="p-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-white/5 text-center bg-indigo-500/5">TOTAL</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {sessionData.countries.map(country => {
-                          const total = results.find(r => r.name === country)?.score || 0;
-                          const isGlobalTop10 = globalTop10.includes(country);
-                          const globalRank = results.findIndex(r => r.name === country) + 1;
-
-                          return (
-                            <tr key={country} className={`border-b border-white/5 hover:bg-white/5 transition-colors group ${isGlobalTop10 ? 'bg-amber-500/[0.03]' : ''}`}>
-                              <td className={`sticky left-0 z-10 group-hover:bg-slate-800 p-4 font-bold uppercase text-xs border-r border-white/5 flex items-center gap-3 ${isGlobalTop10 ? 'bg-amber-950/20 text-amber-200' : 'bg-slate-900/60'}`}>
-                                {isGlobalTop10 && <Crown className="w-3 h-3 text-amber-500 shrink-0" />}
-                                <span className="flex-1 truncate">{country}</span>
-                                {isGlobalTop10 && <span className="text-[8px] font-black opacity-40">#{globalRank}</span>}
-                              </td>
-                              {sessionData.participants.map(p => {
-                                const vote = normalizeVote(sessionData.votes[p.id]?.[country]);
-                                const userVotes = Object.values(sessionData.votes[p.id] || {});
-                                const sortedValues = userVotes.map(v => normalizeVote(v)?.value || 0).sort((a,b) => b-a);
-                                const topThreshold = sortedValues[9] || 0;
-                                const isTop = vote && vote.value > 0 && vote.value >= topThreshold;
-
-                                return (
-                                  <td key={p.id} className={`p-4 text-center text-sm font-black transition-all ${isTop ? 'bg-indigo-600/20 text-indigo-300 ring-1 ring-inset ring-indigo-500/30' : 'text-slate-600'}`}>
-                                    {vote?.value || '—'}
-                                  </td>
-                                );
-                              })}
-                              <td className={`p-4 text-center font-black bg-indigo-500/5 ${isGlobalTop10 ? 'text-amber-500' : 'text-indigo-400'}`}>{total}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </section>

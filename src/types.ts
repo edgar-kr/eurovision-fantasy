@@ -19,5 +19,6 @@ export interface SessionData {
       [countryName: string]: number | Vote;
     };
   };
+  officialTop10?: string[];
   createdAt: string;
 }
