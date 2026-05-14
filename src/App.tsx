@@ -46,11 +46,11 @@ const normalizeVote = (v: any): Vote | null => {
 export default function App() {
   const { t, language, setLanguage } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
-  const [toasts, setToasts] = useState<{ id: number; message: string }[]>([]);
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: 'voted' | 'points12' | 'points1' | 'default' }[]>([]);
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, type: 'voted' | 'points12' | 'points1' | 'default' = 'default') => {
     const id = Date.now();
-    setToasts(prev => [...prev, { id, message }]);
+    setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 10000);
@@ -133,10 +133,10 @@ export default function App() {
         // Trigger Toasts
         if (prev) {
           if (data.participants.length > prev.participants.length) {
-             showToast("Someone joined the party!");
+             showToast("Someone joined the party!", 'default');
           }
           if (data.countries.length !== prev.countries.length) {
-             showToast("The country list was updated.");
+             showToast("The country list was updated.", 'default');
           }
           data.countries.forEach(country => {
              Object.entries(data.votes).forEach(([pId, v]) => {
@@ -144,13 +144,13 @@ export default function App() {
                 const pv = normalizeVote(prev.votes[pId]?.[country]);
                 if (nv && (!pv || nv.value !== pv.value) && (nv.value === 1 || nv.value === 12)) {
                    const pName = data.participants.find(p => p.id === pId)?.name;
-                   showToast(`${pName} just gave ${nv.value} points to ${country}!`);
+                   showToast(`${pName} just gave ${nv.value} points to ${country}!`, nv.value === 12 ? 'points12' : 'points1');
                 }
              });
              const allVoted = data.participants.every(p => !!data.votes[p.id]?.[country]);
              const prevAllVoted = prev.participants.every(p => !!prev.votes[p.id]?.[country]);
              if (allVoted && !prevAllVoted) {
-                showToast(`Everyone has finished voting for ${country}!`);
+                showToast(`Everyone has finished voting for ${country}!`, 'voted');
              }
           });
         }
@@ -383,11 +383,14 @@ export default function App() {
   return (
     <div className="min-h-screen text-slate-200 font-sans flex flex-col">
       {/* Toasts */}
-      <div className="fixed bottom-4 left-4 z-[100] flex flex-col gap-2 pointer-events-none">
+      <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2 pointer-events-none">
         {toasts.map(toast => (
-          <div key={toast.id} className="bg-slate-900 border border-white/10 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2">
-            <div className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-sm font-bold">{toast.message}</span>
+          <div key={toast.id} className={`
+            bg-slate-900 border px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-2 pointer-events-auto
+            ${toast.type === 'voted' ? 'border-green-500/50' : toast.type === 'points12' ? 'border-orange-500/50' : toast.type === 'points1' ? 'border-blue-500/50' : 'border-white/10'}
+          `}>
+            <div className={`w-2 h-2 rounded-full animate-pulse ${toast.type === 'voted' ? 'bg-green-500' : toast.type === 'points12' ? 'bg-orange-500' : toast.type === 'points1' ? 'bg-blue-500' : 'bg-indigo-500'}`} />
+            <span className="text-sm font-bold text-white">{toast.message}</span>
           </div>
         ))}
       </div>
