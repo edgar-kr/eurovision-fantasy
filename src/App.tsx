@@ -170,7 +170,7 @@ export default function App() {
         const initialData: SessionData = {
           id: sessionId,
           adminId: user.uid,
-          countries: ["Sweden", "Finland", "Ukraine", "Norway", "United Kingdom"],
+          countries: ["Bulgaria", "Azerbaijan", "Romania", "Luxembourg", "Czechia", "France", "Armenia", "Switzerland", "Cyprus", "Austria", "Latvia", "Denmark", "Australia", "Ukraine", "United Kingdom", "Albania", "Malta", "Norway"],
           participants: [],
           votes: {}, // { [participantId]: { [countryName]: score } }
           createdAt: new Date().toISOString()
