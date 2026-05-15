@@ -560,7 +560,7 @@ export default function App() {
         {/* Sidebar */}
         <aside 
           className={`
-            fixed inset-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:flex w-full border-r border-white/5 transform transition-all duration-300 ease-in-out
+            fixed inset-0 top-[73px] lg:top-0 z-40 bg-slate-950 lg:bg-transparent lg:relative lg:flex w-full border-r border-white/5 transform transition-all duration-300 ease-in-out
             ${mobileTab === 'management' ? 'translate-x-0' : '-translate-x-full'}
             ${isSettingsOpen ? 'lg:w-[450px] lg:translate-x-0' : 'lg:w-0 lg:-translate-x-full overflow-hidden'}
           `}
