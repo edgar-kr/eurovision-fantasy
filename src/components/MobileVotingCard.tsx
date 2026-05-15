@@ -30,11 +30,11 @@ export default function MobileVotingCard({
   const isJokerMode = currentVote?.type === 'joker';
 
   return (
-    <div className="bg-slate-900/60 rounded-3xl p-5 border border-white/5 space-y-5 shadow-xl">
+    <div className={`rounded-3xl p-5 border transition-all space-y-5 shadow-xl ${currentVote ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-slate-900/60 border-white/5'}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">
           <span className="text-xs font-black text-slate-600 shrink-0">#{rank}</span>
-          <h4 className="font-black text-xl tracking-tight uppercase text-white truncate">{country}</h4>
+          <h4 className={`font-black text-xl tracking-tight uppercase truncate ${currentVote ? 'text-emerald-400' : 'text-white'}`}>{country}</h4>
         </div>
         {currentVote && currentVote.value > 0 && (
           <div className="flex items-center gap-2">

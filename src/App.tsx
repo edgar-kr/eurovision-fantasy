@@ -28,9 +28,11 @@ import {
   ListOrdered,
   ChevronLeft,
   ChevronRight,
-  Menu
+  Menu,
+  HelpCircle
 } from 'lucide-react';
 import MobileVotingCard from './components/MobileVotingCard';
+import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import { db, auth, appId } from './firebase';
 import { SessionData, Participant, Vote } from './types';
 
@@ -68,13 +70,14 @@ export default function App() {
   const prevSessionData = React.useRef<SessionData | null>(null);
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [resultsTab, setResultsTab] = useState<'overview' | 'advanced'>('overview');
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
   const [mobileTab, setMobileTab] = useState<'ballot' | 'standings' | 'management'>('management');
   const [searchTerm, setSearchTerm] = useState('');
-  const [advancedSort, setAdvancedSort] = useState<{ key: 'name' | 'score', direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
+  const [advancedSort, setAdvancedSort] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
 
   // Voting Rule Logic
   const votingRules = useMemo(() => {
@@ -526,6 +529,13 @@ export default function App() {
           
           <div className="flex items-center gap-2 md:gap-3">
             <button 
+              onClick={() => setIsHelpOpen(true)}
+              className="bg-slate-800/80 hover:bg-slate-700 w-10 h-10 rounded-xl text-slate-400 hover:text-indigo-400 transition-all flex items-center justify-center border border-white/5"
+              title={t('help')}
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+            <button 
               onClick={() => setLanguage(language === 'en' ? 'ua' : 'en')}
               className="bg-slate-800/80 hover:bg-slate-700 w-10 h-10 md:w-auto md:px-3 md:py-2 rounded-xl text-[10px] md:text-xs font-black uppercase tracking-widest border border-white/5 transition-all flex items-center justify-center"
             >
@@ -551,7 +561,7 @@ export default function App() {
               className={`w-10 h-10 md:w-auto md:px-5 md:py-2.5 rounded-xl text-xs md:text-sm font-black transition-all flex items-center justify-center gap-2 shadow-lg ${showResults ? 'bg-indigo-600 text-white' : 'bg-white text-slate-950 hover:bg-indigo-50'}`}
             >
               <Trophy className="w-4 h-4" />
-              <span className="hidden md:inline">{showResults ? t('close') : t('winner')}</span>
+              <span className="hidden md:inline">{showResults ? t('close') : t('results')}</span>
             </button>
           </div>
         </div>
@@ -791,9 +801,15 @@ export default function App() {
                               const matchCount = userTop10.filter(name => targetList.includes(name)).length;
 
                               return (
-                                <th key={p.id} className="sticky top-0 z-40 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px]">
+                                <th 
+                                  key={p.id} 
+                                  className="sticky top-0 z-40 bg-slate-950 p-4 text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 text-center min-w-[120px] cursor-pointer hover:text-indigo-400 transition-colors"
+                                  onClick={() => setAdvancedSort(prev => ({ key: p.id, direction: prev.key === p.id && prev.direction === 'desc' ? 'asc' : 'desc' }))}
+                                >
                                   <div className="flex flex-col items-center gap-1">
-                                    <span>{p.name}</span>
+                                    <div className="flex items-center gap-1">
+                                      {p.name} {advancedSort.key === p.id && (advancedSort.direction === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)}
+                                    </div>
                                     <span className="bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded text-[8px] flex items-center gap-1 border border-green-500/20">
                                       <Check className="w-2 h-2" /> {matchCount}/10 MATCH
                                     </span>
@@ -822,7 +838,15 @@ export default function App() {
                             .sort((a, b) => {
                               const dir = advancedSort.direction === 'asc' ? 1 : -1;
                               if (advancedSort.key === 'name') return a.name.localeCompare(b.name) * dir;
-                              return (a.score - b.score) * dir;
+                              if (advancedSort.key === 'score') return (a.score - b.score) * dir;
+                              
+                              // Sort by participant votes
+                              const voteA = normalizeVote(sessionData.votes[advancedSort.key]?.[a.name])?.value || 0;
+                              const voteB = normalizeVote(sessionData.votes[advancedSort.key]?.[b.name])?.value || 0;
+                              
+                              // If votes are equal, fall back to total score for consistent ordering
+                              if (voteA === voteB) return (a.score - b.score) * dir;
+                              return (voteA - voteB) * dir;
                             })
                             .map(({ name: country, score: total }) => {
                             const isOfficial = globalTop10.includes(country);
@@ -1051,9 +1075,9 @@ export default function App() {
                           const rank = sessionData.countries.indexOf(country) + 1;
 
                           return (
-                            <tr key={country} className="border-b border-white/5 hover:bg-indigo-500/5 transition-all group">
+                            <tr key={country} className={`border-b border-white/5 transition-all group ${currentVote ? 'bg-emerald-500/10 hover:bg-emerald-500/20' : 'hover:bg-indigo-500/5'}`}>
                               <td className="p-6 text-xs font-black text-slate-600 text-center">{rank}</td>
-                              <td className="p-6 font-black text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
+                              <td className={`p-6 font-black text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight ${currentVote ? 'text-emerald-400' : ''}`}>{country}</td>
                               <td className="p-6">
                                 <div className="flex flex-wrap gap-2">
                                   {POINT_SCALE.map(pt => {
@@ -1233,6 +1257,7 @@ export default function App() {
           <span className="text-[10px] font-black uppercase tracking-widest">{t('management')}</span>
         </button>
       </nav>
+      <KnowledgeBaseModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
     </div>
   );
 }
