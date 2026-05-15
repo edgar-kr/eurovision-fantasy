@@ -28,7 +28,7 @@ import {
   ListOrdered,
   ChevronLeft,
   ChevronRight,
-  Menu,
+  PanelLeft,
   HelpCircle
 } from 'lucide-react';
 import MobileVotingCard from './components/MobileVotingCard';
@@ -511,7 +511,7 @@ export default function App() {
               className="p-2 hover:bg-white/5 rounded-lg transition-colors flex items-center justify-center text-indigo-400"
               title={isSettingsOpen ? "Hide Sidebar" : "Show Sidebar"}
             >
-              <Menu className="w-6 h-6" />
+              <PanelLeft className="w-6 h-6" />
             </button>
             <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2 md:p-2 rounded-xl shadow-lg flex items-center justify-center">
               <span className="font-black text-white text-xs">E26</span>
