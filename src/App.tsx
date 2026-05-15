@@ -339,35 +339,36 @@ export default function App() {
     const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
     
     const currentBallot = { ...(sessionData.votes[myParticipantId] || {}) };
-    
-    // If setting a score (not clearing)
-    if (score > 0) {
-      if (type === 'mandatory') {
-        const count = ballotStats.mandatory[score] || 0;
-        // If we already reached the limit for this point value in this ballot
-        if (count >= votingRules.sets) {
-          // If this country was already using this mandatory score, we are toggling it OFF
-          const existing = normalizeVote(currentBallot[country]);
-          if (existing?.type === 'mandatory' && existing.value === score) {
-            delete currentBallot[country];
-          } else {
-            // Otherwise, we don't allow adding more than the set limit
+    const existing = normalizeVote(currentBallot[country]);
+
+    // If we are clicking a score that is already assigned to THIS country, we UNVOTE
+    if (existing && existing.type === type && existing.value === score) {
+      delete currentBallot[country];
+    } else {
+      // We are trying to assign a NEW score (or change existing one)
+      if (score > 0) {
+        if (type === 'mandatory') {
+          const count = ballotStats.mandatory[score] || 0;
+          // If we already reached the limit for this point value in this ballot
+          if (count >= votingRules.sets) {
+            // We can only proceed if we are replacing an existing mandatory score of the SAME value
+            // (But we already handled the 'same value' toggle above, so if we are here, it's a DIFFERENT country
+            // or the limit is truly reached and we are trying to add a NEW one)
             return;
           }
+          currentBallot[country] = { value: score, type };
         } else {
+          // Joker Type
+          if (ballotStats.jokerCount >= votingRules.jokerSlots) {
+            // Only allow if we are changing the value of an existing Joker for THIS country
+            if (existing?.type !== 'joker') return;
+          }
           currentBallot[country] = { value: score, type };
         }
       } else {
-        // Joker Type
-        if (ballotStats.jokerCount >= votingRules.jokerSlots) {
-          // Only allow if we are changing the value of an existing Joker for THIS country
-          const existing = normalizeVote(currentBallot[country]);
-          if (existing?.type !== 'joker') return;
-        }
-        currentBallot[country] = { value: score, type };
+        // This case handles score=0 if ever passed, which should unvote
+        delete currentBallot[country];
       }
-    } else {
-      delete currentBallot[country];
     }
 
     await updateDoc(docRef, {
