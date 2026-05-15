@@ -72,7 +72,7 @@ export default function App() {
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
-  const [mobileTab, setMobileTab] = useState<'ballot' | 'standings' | 'management'>('ballot');
+  const [mobileTab, setMobileTab] = useState<'ballot' | 'standings' | 'management'>('management');
   const [searchTerm, setSearchTerm] = useState('');
   const [advancedSort, setAdvancedSort] = useState<{ key: 'name' | 'score', direction: 'asc' | 'desc' }>({ key: 'score', direction: 'desc' });
 
@@ -654,7 +654,7 @@ export default function App() {
                           <button 
                             disabled={!user}
                             onClick={() => claimSlot(p.id)}
-                            className={`text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/20'}`}
+                            className={`text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : `text-white shadow-indigo-500/20 ${!isAdmin ? 'animate-rainbow' : 'bg-indigo-600 hover:bg-indigo-500'}`}`}
                           >
                             {user ? t('join') : '...'}
                           </button>
