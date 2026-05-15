@@ -5,6 +5,7 @@ import { useTranslation } from '../i18n/context';
 
 interface MobileVotingCardProps {
   country: string;
+  rank: number;
   currentVote: Vote | null;
   pointScale: number[];
   onCastVote: (country: string, score: number, type: 'mandatory' | 'joker') => void;
@@ -16,6 +17,7 @@ interface MobileVotingCardProps {
 
 export default function MobileVotingCard({
   country,
+  rank,
   currentVote,
   pointScale,
   onCastVote,
@@ -29,8 +31,11 @@ export default function MobileVotingCard({
 
   return (
     <div className="bg-slate-900/60 rounded-3xl p-5 border border-white/5 space-y-5 shadow-xl">
-      <div className="flex items-center justify-between">
-        <h4 className="font-black text-xl tracking-tight uppercase text-white">{country}</h4>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <span className="text-xs font-black text-slate-600 shrink-0">#{rank}</span>
+          <h4 className="font-black text-xl tracking-tight uppercase text-white truncate">{country}</h4>
+        </div>
         {currentVote && currentVote.value > 0 && (
           <div className="flex items-center gap-2">
             <div className={`px-3 py-1 rounded-lg text-xs font-black flex items-center gap-1.5 ${isJokerMode ? 'bg-amber-500/20 text-amber-500 border border-amber-500/20' : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/20'}`}>

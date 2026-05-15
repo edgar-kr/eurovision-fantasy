@@ -196,7 +196,7 @@ export default function App() {
         const initialData: SessionData = {
           id: sessionId,
           adminId: user.uid,
-          countries: ["Bulgaria", "Azerbaijan", "Romania", "Luxembourg", "Czechia", "France", "Armenia", "Switzerland", "Cyprus", "Austria", "Latvia", "Denmark", "Australia", "Ukraine", "United Kingdom"],
+          countries: ["Denmark", "Germany", "Israel", "Belgium", "Albania", "Greece", "Ukraine", "Australia", "Serbia", "Malta", "Czechia", "Bulgaria", "Croatia", "United Kingdom", "France", "Moldova", "Finland", "Poland", "Lithuania", "Sweden", "Cyprus", "Italy", "Norway", "Romania", "Austria"],
           participants: [],
           votes: {}, // { [participantId]: { [countryName]: score } }
           createdAt: new Date().toISOString()
@@ -1031,7 +1031,8 @@ export default function App() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-950/40">
-                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Country</th>
+                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 w-16 text-center">#</th>
+                          <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">{t('country')}</th>
                           <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5">Mandatory Rank</th>
                           {votingRules.jokerSlots > 0 && (
                             <th className="p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-white/5 text-center">Joker</th>
@@ -1046,9 +1047,11 @@ export default function App() {
                           const myVotes = sessionData.votes[myParticipantId!] || {};
                           const currentVote = normalizeVote(myVotes[country]);
                           const isJokerMode = currentVote?.type === 'joker';
+                          const rank = sessionData.countries.indexOf(country) + 1;
 
                           return (
                             <tr key={country} className="border-b border-white/5 hover:bg-indigo-500/5 transition-all group">
+                              <td className="p-6 text-xs font-black text-slate-600 text-center">{rank}</td>
                               <td className="p-6 font-black text-lg group-hover:text-indigo-300 transition-colors uppercase tracking-tight">{country}</td>
                               <td className="p-6">
                                 <div className="flex flex-wrap gap-2">
@@ -1126,10 +1129,12 @@ export default function App() {
                         .map((country: string) => {
                           const myVotes = sessionData.votes[myParticipantId!] || {};
                           const currentVote = normalizeVote(myVotes[country]);
+                          const rank = sessionData.countries.indexOf(country) + 1;
                           return (
                             <MobileVotingCard 
                               key={country}
                               country={country}
+                              rank={rank}
                               currentVote={currentVote}
                               pointScale={POINT_SCALE}
                               onCastVote={castVote}
