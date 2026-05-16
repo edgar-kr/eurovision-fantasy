@@ -665,9 +665,9 @@ export default function App() {
                           <button 
                             disabled={!user}
                             onClick={() => claimSlot(p.id)}
-                            className={`text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : `text-white shadow-indigo-500/20 ${!isAdmin ? 'animate-rainbow' : 'bg-indigo-600 hover:bg-indigo-500'}`}`}
+                            className={`text-[10px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg shadow-lg transition-all active:scale-95 shrink-0 ${!user ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : `text-white shadow-indigo-500/20 ${!isAdmin ? 'animate-rainbow' : 'bg-indigo-600 hover:bg-indigo-500'}`}`}
                           >
-                            {user ? t('join') : '...'}
+                            {user ? t('join') : t('connecting')}
                           </button>
                         ) : p.claimedBy === user?.uid && (
                           <span className="text-[10px] bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded-lg font-black uppercase">{t('you')}</span>
